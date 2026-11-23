@@ -5,8 +5,9 @@
 
 -- 1. A short public number for each conversation, shown on user cards (#1000, #1001, ...).
 --    Existing conversations (including the seeds) are numbered automatically.
+--    "if not exists" makes this file safe to run again.
 alter table conversations
-  add column number bigint generated always as identity (start with 1000);
+  add column if not exists number bigint generated always as identity (start with 1000);
 
 -- 2. Everything a user card shows, for one conversation.
 --    Message count = messages on both sides. Duration = started_at to the last message.

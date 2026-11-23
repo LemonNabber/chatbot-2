@@ -1,0 +1,294 @@
+FriendBot UI requirements
+Nov 23, 2026 · @Beck
+Concept
+Type and colour draw the line between the two sides of FriendBot: the obscured side that feels like one friendly being, and the visible side that shows it is made of other people's data. Every rule below serves that line.
+• Obscured (FRIEND.BEGIN, FRIEND.START): the setup assistant and the chat as a single bot. Friendly, rounded, calm.
+• Visible (FRIEND.VISIBLE): the same chat with the sources shown: names, faces, and the conversations each reply came from.
+• Archive (FRIEND.VISIBLE_ARCHIVE): another person's past conversation, opened from a source. Greyscale, with the panel colours flipped.
+The look is retro calm technology: an old desktop OS, a sky wallpaper, soft glows, plain outlines, slow typing. The calm surface is meant to sit uneasily with what the tool reveals.
+The mockups are the reference. Where this doc says otherwise, it is a deliberate correction, listed in "Corrections to the mockups".
+Fonts
+Three typefaces, three roles. A font is never used outside its role.
+Font
+Role
+Meaning
+Used for (summary)
+Cosette Texte
+Interface
+The machine you operate
+Buttons, labels, step titles, inputs, user cards, window controls
+Balsamiq Sans
+The friend
+The illusion of one friendly being
+Setup headlines and body text, every bot message
+OT Bulb Monoline
+Data
+What is stored and reused
+Every sent user message, window titles, the status terminal
+OT Bulb Monoline in the user's own messages, even on the obscured side, quietly foreshadows that those messages are data for future conversations.
+Loading:
+• All three are self-hosted as .woff2 files in /fonts, loaded with @font-face and font-display: block. Text never flashes in a fallback font, so the font logic is never briefly wrong.
+• Balsamiq Sans is free (Google Fonts, OFL), in Regular and Bold.
+• Cosette Texte is also free on Google Fonts, where it is spelled Cossette Texte (two s's). OT Bulb Monoline is commercial: it needs a web licence and the font files from you (see Open questions).
+• Fallbacks if a file fails: Cosette Texte → "Arial Narrow", sans-serif; Balsamiq Sans → "Comic Neue", sans-serif; OT Bulb Monoline → ui-monospace, monospace.
+• Kaomoji and symbols (Д, ω, ▽, ☆, ♪, ゞ) are outside these fonts' character sets. They fall back to "Noto Sans JP", "Noto Sans Symbols 2", sans-serif at the same size.
+Which font where
+Every text element has exactly one font, and it stays the same in every mode. Only colour and labels change between obscured, visible and archive.
+Element
+Font
+Example
+Window title bar (the path)
+OT Bulb Monoline
+FRIEND.BEGIN, FRIEND.VISIBLE_ARCHIVE REBECCA > LEMON
+Status terminal
+OT Bulb Monoline
+[STATUS] Voice: Success
+Sent user message
+OT Bulb Monoline
+I like it with jasmine tea!
+Context line in a source block
+OT Bulb Monoline, muted
+I like tea more than coffee
+Headline
+Balsamiq Sans Bold
+Welcome, What's on your mind?
+Setup body text
+Balsamiq Sans Regular
+Welcome to the FriendBot Setup Assistant! …
+Bot message
+Balsamiq Sans Regular
+Do you like boba
+Step title
+Cosette Texte
+SAY “HELLO”, SNAP A SELFIE, HOW DO YOU FEEL?
+Button
+Cosette Texte
+INITIATE, CONTINUE, ENTER ARCHIVE ↗
+Input: placeholder and typed draft
+Cosette Texte
+YOUR NAME, START THE CONVERSATION, what, was that the wrong answer?
+Message row label
+Cosette Texte
+YOU, BOT, REBECCA, ARU
+User card
+Cosette Texte
+#1235 REBECCA … 15 MIN … 20
+Small UI text
+Cosette Texte
+00:00, 01:30, ABC, the sidebar count
+Kaomoji choices
+Cosette Texte + symbol fallback
+(˘ᴗ˘)
+The perception rule. A message is always set in the font the person in that conversation saw it in. Their own messages are OT Bulb Monoline; the bot's replies to them are Balsamiq Sans. This holds in the live chat, the visible view and the archive. Example: Lemon's “ok” is OT Bulb Monoline in Lemon's archive (Lemon typed it), but Balsamiq Sans in Rebecca's chat (Rebecca received it from the bot).
+Draft and sent. Text in the input box is Cosette Texte, because it is still part of the interface. When sent, it reappears as a row in OT Bulb Monoline: the moment it becomes data.
+Context lines. In a source block, the line that prompted the reused reply was never seen by the person whose chat this is. It is shown as raw data: OT Bulb Monoline, muted grey, with its label in muted Cosette Texte. The reused reply itself keeps the font it had in this chat.
+Window titles are data. The title bar names the system's current location like a file path, so it uses the data font. Clickable window controls (the eye toggle, dock icons) are icons, not text.
+Type scale and sizing
+All text uses six sizes, set in rem. The root size follows the screen, so the whole window scales as one object, like the mockups.
+Root size: html { font-size: clamp(14px, min(1.25vw, 2vh), 24px); }. On a 1544 × 1000 screen (the mockups' size) that is about 19px. Spacing, window sizes and radii are also in rem. The one exception is border widths (1px and 2px), which stay in px so they land exactly on the pixel filter's grid.
+Token
+Size
+Used for
+--text-display
+4.5rem
+Headlines (Welcome, What's on your mind?)
+--text-xl
+1.375rem
+Setup body text
+--text-lg
+1.125rem
+Step titles, buttons, inputs, message labels, all messages, kaomoji
+--text-md
+1rem
+Window title bar, status terminal
+--text-sm
+0.875rem
+User card, source-block label, ENTER ARCHIVE
+--text-xs
+0.75rem
+Timeline ticks, step-rail ABC, sidebar count
+Other rules:
+• Weight: Balsamiq Sans Bold for headlines only. Everything else is Regular. No synthetic bold or italics.
+• Case: Cosette Texte labels, buttons, step titles, placeholders and user cards are uppercase (text-transform: uppercase). Typed drafts keep the user's own case. OT Bulb Monoline and Balsamiq Sans text is shown exactly as written.
+• Line height: 1.05 for headlines, 1.35 for body text and messages, 1.2 for single-line UI text.
+• Letter spacing: 0.02em for Cosette Texte, −0.01em for headlines, none for the other two.
+• Alignment: headlines and setup body text are centred. In message rows the label is left-aligned and the message right-aligned.
+• Screen size: the layout is for landscape screens 1024px wide or more. Phone layouts are out of scope for now.
+The user card
+Every time a person's info appears, it appears as the same two-row card, with the same fields in the same order and at the same size. The only variation: the obscured side leaves out the conversation number.
+Layout, left to right:
+Row
+Contents
+Top
+#1235 · REBECCA · (˘ᴗ˘) · clock icon 15 MIN · speech-bubble icon 20
+Bottom
+5:32 AM 2027, right-aligned
+Field
+What it shows
+Format
+Conversation number
+A short public number for the conversation
+# + number. Left out on the obscured side
+Name
+The name entered in setup
+Uppercase
+Mood
+The kaomoji picked in setup, stored as conversations.mood
+As picked
+Duration
+Time from first to last message
+15 MIN; under a minute <1 MIN; an hour or more 1 HR 5 MIN
+Message count
+Messages in the conversation, both sides
+Number
+Started
+When the conversation began
+5:32 AM 2027 (time, then year)
+Style: Cosette Texte at --text-sm, a 1px border in the text colour, a 1px rule between the rows, 0.2rem 0.4rem padding, width fitted to its content. Icons are 1em line icons in the text colour. In the archive the card flips to white on black.
+Where it appears:
+• Chat header, centre: the person whose chat this is (no number on the obscured side).
+• Visible sidebar, top: the contributor currently selected.
+• Source block label: whose conversation a reused reply came from.
+• Archive header: the person whose conversation is open.
+Modes and colour
+The interface is black, white and grey everywhere; the only colours are the sky wallpaper and the faint pastel glow. The archive removes the glow's colour too and flips the panels to black.
+
+Obscured
+Visible
+Archive
+Title bar
+FRIEND.BEGIN / FRIEND.START
+FRIEND.VISIBLE
+FRIEND.VISIBLE_ARCHIVE REBECCA > LEMON
+Eye icon (title bar, right)
+Closed
+Open
+Open
+Panels
+White
+White
+Black
+User row
+White, 2px grey border, black text
+Same
+Same (unchanged)
+Bot row
+Black, white text
+Same
+Black, 2px white border, white text
+Row labels
+YOU / BOT
+Names (REBECCA / ARU)
+Names
+User card
+Black on white, no number
+Black on white
+White on black
+Glow behind the content
+Pastel
+Pastel
+Grey
+Photos
+Greyscale, dithered
+Greyscale, dithered
+Greyscale, dithered
+Dock
+Monitor
+Folder, monitor, floppy disk
+Folder, monitor, floppy disk
+The archive flip rule: every surface that is white in the visible view turns black. Message rows keep their own fill so the perception rule still reads (user rows white, bot rows black), and bot rows gain a white border so they stay visible on black. Borders and the user card turn white. The desktop and wallpaper outside the window do not change.
+Colour tokens (sampled from the mockups):
+Token
+Value
+Used for
+--ink
+#050708
+Title bar, bot rows, text
+--paper
+#ffffff
+Panels, user rows
+--chrome
+#f2f2f2
+Window frame
+--line
+#a8a8a8
+2px panel and row borders
+--muted
+#9a9a9a
+Context lines, inactive step-rail icons
+--tint
+#dfe6e4
+Voice graph, empty portrait slot
+--sidebar
+#0b0b0b
+Visible sidebar background
+Glow
+#fff4dc, #eef2ff, #ffecef at about 60% opacity, heavily blurred
+Soft light behind the content
+Screens and components
+One desktop, one window at a time. The window's title tells you where you are; its contents change by step and mode.
+Desktop and window
+• Wallpaper: full-screen sky photo with fine horizontal scanlines (1px dark lines every 3px, about 15% opacity), on every screen. Pixel-filtered as an image.
+• Window: --chrome frame, 2px black outline, 0.75rem corner radius. Black title bar 2.25rem tall: path on the left, eye toggle on the right (chat windows only).
+• Inner panel: white, 2px --line border, 0.5rem radius, 1rem inset from the frame.
+• Window size: setup 57 × 38rem, centred. Chat 74 × 47rem, centred.
+• Dock: centred under the window, 3rem light-grey icons with a 1px outline. Obscured: monitor (the bot's face). Visible and archive: folder, monitor, floppy disk.
+• Photos: every portrait is greyscale and dithered with 4 grey levels (the stipple look of the mockups), rounded 0.5rem with a 2px border.
+Setup (FRIEND.BEGIN)
+A step rail on the right shows the four steps as icons: microphone, camera, person, ABC. The current step is black, the others --muted. Primary buttons sit bottom centre.
+1.  Welcome. Headline “Welcome”, centred body text, INITIATE.
+2.  Voice: SAY “HELLO”. A --tint graph panel: the live waveform as a thin line, the detected pitch as thick black segments, a playhead with a triangle marker, time ticks below. A square record/stop button; a small level meter bottom left.
+3.  Selfie: SNAP A SELFIE. A line drawing of a camera. The live camera feed shows inside the big lens circle; the black bar with a triangle on top is the shutter. The small rectangle top left is the viewfinder.
+4.  Mood: HOW DO YOU FEEL? A scrolling grid of kaomoji in cells divided by 1px lines; the selected cell fills grey. CONTINUE.
+5.  Name. A centred YOUR NAME input with a 2px border. CONTINUE.
+6.  Status. A black terminal box over the window: the face icon, then lines typed out in OT Bulb Monoline (Voice, Photo, Mood, Name: Success; PROFILE CREATED; Uploading to cloud… Do not close window) and a progress bar. It runs while the photo uploads and the conversation is saved.
+Chat (FRIEND.START, obscured)
+• Empty: headline “What's on your mind?” centred; at the bottom, a START THE CONVERSATION input on a 1px underline.
+• Header: two square portrait slots with the user card centred between them, over the glow.
+• Messages: a framed list of full-width rows, 2.5rem tall, 0.25rem radius, 0.5rem apart. Label left, message right. A thin custom scrollbar with a ridged grip on the right.
+• Input: under the list, borderless, with a blinking caret. Messages type out with the voice sounds, as they do now.
+Visible (FRIEND.VISIBLE)
+• Sidebar (--sidebar, about 16rem wide): a row of person icons for this chat's contributors (the selected one white) with their count on the right; the selected contributor's user card; a two-column stack of card-shaped slots holding contributor photos, the selected one raised.
+• Rows show names instead of YOU and BOT.
+• Source block: a reused bot row opens into an indented, 1px-bordered block: the source person's user card on the left, ENTER ARCHIVE ↗ on the right, the context line (muted), then the reused row.
+Archive (FRIEND.VISIBLE_ARCHIVE)
+The same layout as visible, showing the source person's conversation, with the archive flip from “Modes and colour”. The title path grows with each level: REBECCA > LEMON > …
+Corrections to the mockups
+Eight small changes, each to make a rule hold everywhere. Everything else follows the mockups as closely as possible.
+Mockup shows
+This doc says
+Why
+Step titles, buttons and chat text at slightly different sizes from screen to screen
+One six-size scale (see "Type scale and sizing")
+One steady rhythm; sizes mean roles
+The source block labelled only “#1222 LEMON”
+The full user card
+A person's info always looks the same
+CONTINUE bottom right on the name step, bottom centre elsewhere
+Bottom centre on every step
+The next action is always in one place
+The active step-rail icon “ABC” drawn bold
+Active = black, inactive = grey, same weight
+Bold is reserved for headlines
+Scanlines on every screen except Welcome
+Scanlines on every screen
+One consistent desktop
+Timeline ticks 00:00 – 01:30 – 03:00 (reads as minutes)
+0.0S – 1.5S – 3.0S, recording 3 seconds
+The recording is a few seconds long
+A warm tint left in the archive glow
+Grey glow
+The archive is fully greyscale
+ENTER ARCHIVE without its arrow in the archive view
+Always ENTER ARCHIVE ↗
+Same control, same label
+The mockups' sample data (Rebecca and Lemon both #1235, Lemon also #1222) is placeholder only; each conversation has exactly one number.
+Open questions
+The first three block the build; the rest have a stated default that will be used unless you say otherwise.
+[ ] Font files: send the .woff2 (or .otf) files for OT Bulb Monoline, and confirm its web licence covers this use. (Cosette Texte comes from Google Fonts.)
+[ ] Portrait slots: default reading: the right slot is you and the left slot is the bot's  face (black is the bot on the obscured side), and then in visible mode shows the most recent (or selected) user that was recycled for the bot's message. 
+[ ] Step titles: you described Balsamiq Sans as covering “subheaders”. The mockups set step titles (SAY “HELLO”, SNAP A SELFIE) in Cosette Texte. Default: Cosette Texte, with “subheader” meaning the setup body text.
+[ ] Sidebar count: default: the icons are this chat's contributors and the number counts them.
+[ ] Dock icons: default: folder opens the archive list, floppy disk saves a transcript. Or are they decorative?
+[ ] Leaving the archive: default: each name in the title path is clickable and goes back to that level.
+Build notes (no answer needed): the mood is stored in a new conversations.mood column (supabase/mood.sql). The user card still needs one more column, a short conversation number, added during the build. The setup order changes to voice → selfie → mood → name. The pixel filter stays off in Safari.

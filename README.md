@@ -97,6 +97,7 @@ In a new Supabase project's **SQL Editor**, run the following in this order:
 5. **Voice:** [supabase/voice.sql](supabase/voice.sql) adds `voice_pitch` and makes `find_best_response` return `source_voice_pitch`.
 6. **Mood:** [supabase/mood.sql](supabase/mood.sql) adds `mood` (the kaomoji picked in setup) and makes `find_best_response` and `get_conversation_transcript` return `source_mood`. Run it after `voice.sql`.
 7. **UI:** [supabase/ui.sql](supabase/ui.sql) adds the conversation `number` shown on user cards, plus `get_conversation_card` (name, mood, duration, message count) and `get_message_context` (the line before a reused reply). Run it after `mood.sql`.
+8. **Data window:** [supabase/data.sql](supabase/data.sql) adds `get_message_snapshot` (a reused line plus the line before it, with ids and positions) and `count_conversations_between` (how many conversations started between two others), used by the DATA window. Run it after `ui.sql`. Without it, the window still works but shows `—` for the matched line's id.
 
 The interface follows the requirements doc (fonts, sizes, modes, user card). OT Bulb Monoline is not free: put its file at `fonts/OTBulbMonoline-Regular.woff2`. Until then, the page falls back to a system monospace font.
 

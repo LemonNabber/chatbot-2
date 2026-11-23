@@ -33,6 +33,7 @@
     --text-md: 1rem;
     --text-sm: 0.875rem;
     --text-xs: 0.75rem;
+    --text-msg: 0.984375rem; /* message rows: 0.875 x text-lg */
 
     /* colour ("Modes and colour") */
     --ink: #050708;
@@ -42,10 +43,19 @@
     --muted: #9a9a9a;
     --tint: #dfe6e4;
     --sidebar: #0b0b0b;
+    --rule: #c8c8c8;     /* hairlines: frames, dividers */
+    --key: #ececec;      /* button faces */
+    --key-hover: #dddddd;
+
+    /* radii, from outside in */
+    --r-window: 0.75rem;
+    --r-panel: 0.5rem;
+    --r-control: 0.35rem;
+    --r-small: 0.25rem;
   }
 
   /* Root size follows the screen so the window scales as one object. */
-  html { font-size: clamp(14px, min(1.25vw, 1.9vh), 24px); }
+  html { font-size: clamp(10px, min(1.2vw, 1.78vh), 22px); }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -71,14 +81,14 @@
     position: fixed; inset: 0; width: 100vw; height: 100vh;
     display: block; will-change: transform;
   }
-  #scanlines {
-    position: fixed; inset: 0; pointer-events: none;
-    background: repeating-linear-gradient(to bottom, rgba(0, 10, 40, 0.15) 0 1px, transparent 1px 3px);
-  }
+  /* window stacking: whichever window you click gets the next z-index (bringToFront) */
+  #desktop { z-index: 40; pointer-events: none; } /* full-screen layer: only the window itself takes clicks */
+  #desktop > .window { pointer-events: auto; }
+  .datawin { z-index: 41; }
   #desktop {
     position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    padding-bottom: 3.5rem;
+    padding: 1.5rem 1.5rem 5rem; /* bottom: room for the dock */
   }
 
   /* ============================================================
@@ -88,8 +98,9 @@
     position: relative;
     background: var(--chrome);
     border: 2px solid #000;
-    border-radius: 0.75rem;
+    border-radius: var(--r-window);
     overflow: hidden;
+    flex: none;
     display: flex; flex-direction: column;
   }
   .window.w-setup { width: 57rem; height: 38rem; }
@@ -121,7 +132,7 @@
     position: relative; flex: 1; min-width: 0;
     background: var(--paper);
     border: 2px solid var(--line);
-    border-radius: 0.5rem;
+    border-radius: var(--r-panel);
     overflow: hidden;
   }
   /* The glow is one opaque layer under everything in the panel (a fading transparent
@@ -156,15 +167,18 @@
   .btn {
     font-family: var(--f-ui); letter-spacing: 0.02em;
     font-size: var(--text-lg); line-height: 1.2; text-transform: uppercase;
-    min-width: 8rem; padding: 0.55rem 1.4rem;
-    background: #ececec;
-    border: 2px solid var(--line);
-    border-radius: 0.3rem;
+    min-width: 8rem; padding: 0.5rem 1.4rem;
+    background: var(--key);
+    border: 2px solid var(--line); border-bottom-width: 4px;
+    border-radius: var(--r-control);
+    position: relative;
   }
-  .btn:hover { background: #dddddd; }
-  .btn:disabled { color: var(--muted); cursor: default; background: #f4f4f4; }
+  .btn:hover { background: var(--key-hover); }
+  .btn:active:not(:disabled) { border-bottom-width: 2px; top: 2px; }
+  .btn:disabled { color: var(--muted); cursor: default; background: var(--chrome); border-color: var(--rule); }
+  .btn:focus-visible, .rec:focus-visible, .kao:focus-visible, .enter:focus-visible { outline: 2px solid #000; outline-offset: 2px; }
   .actions {
-    position: absolute; left: 0; right: 0; bottom: 1.5rem;
+    position: absolute; left: 0; right: 0; bottom: 1.6rem;
     display: flex; justify-content: center; gap: 1rem;
   }
 
@@ -177,16 +191,18 @@
     background: var(--paper); color: var(--ink);
     white-space: nowrap;
   }
-  .card-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.15rem 0.4rem; }
+  .card-row { display: flex; align-items: center; gap: 0.55rem; padding: 0.15rem 0.45rem; min-width: 0; }
+  .card .c-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; display: block; }
   .card-row + .card-row { border-top: 1px solid currentColor; justify-content: flex-end; }
   .card-row > span { display: flex; align-items: center; gap: 0.2rem; }
   .card .c-mood { text-transform: none; }
   .card .c-dur { margin-left: auto; }
+  .card .c-when { padding-left: 0.55rem; border-left: 1px solid currentColor; }
   .card svg { width: 1em; height: 1em; flex: none; }
 
   .portrait {
     width: 11.5rem; height: 11.5rem; flex: none;
-    border: 2px solid var(--line); border-radius: 0.5rem;
+    border: 2px solid var(--line); border-radius: var(--r-panel);
     background: var(--tint);
     overflow: hidden;
   }
@@ -210,7 +226,7 @@
     display: flex; flex-direction: column; align-items: center; gap: 0.55rem;
     padding: 0.6rem 0.35rem;
     background: var(--paper);
-    border: 2px solid #c8c8c8; border-radius: 1.2rem;
+    border: 2px solid var(--rule); border-radius: 1.2rem;
     color: #b5b5b5;
   }
   .rail .r-item { width: 1.4rem; height: 1.4rem; display: flex; align-items: center; justify-content: center; }
@@ -222,14 +238,15 @@
   .device {
     margin-top: 1.4rem;
     width: 44rem; height: 24.5rem;
-    border: 2px solid #c8c8c8; border-radius: 0.35rem;
+    border: 2px solid var(--rule); border-radius: var(--r-control);
     background: var(--paper);
     position: relative;
   }
   .graph {
     position: absolute; left: 1rem; right: 1rem; top: 0.8rem; height: 17.5rem;
     background: var(--tint);
-    border: 2px solid #b9bfbd; border-radius: 0.3rem;
+    border: 2px solid #b9bfbd; border-radius: var(--r-small);
+    overflow: hidden;
   }
   .graph canvas { position: absolute; left: 0; top: 0; width: 100%; height: 12.5rem; display: block; }
   .ticks {
@@ -240,28 +257,33 @@
   .tick { position: absolute; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); }
   .tick::before, .tick::after { content: ""; width: 1px; flex: 1; background: #000; }
   .tick span { padding: 0.15rem 0; }
-  .device-foot { position: absolute; left: 1rem; right: 1rem; bottom: 1rem; height: 3rem; display: flex; align-items: center; justify-content: center; }
-  .meter { position: absolute; left: 0; bottom: 0.2rem; width: 10rem; display: flex; flex-direction: column; gap: 3px; }
+  .device-foot { position: absolute; left: 1rem; right: 1rem; bottom: 1rem; height: 3.4rem; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .meter { grid-column: 1; grid-row: 1; justify-self: start; width: 9rem; display: flex; flex-direction: column; gap: 3px; }
   .meter i { display: block; height: 2px; background: #c4c4c4; width: 100%; transition: width 80ms linear; }
   .meter i.on { background: #555; }
-  .pitch-read { position: absolute; left: 11rem; bottom: 0.1rem; font-family: var(--f-ui); font-size: var(--text-xs); letter-spacing: 0.02em; text-transform: uppercase; color: #555; }
+  .pitch-read { grid-column: 1; grid-row: 1; justify-self: start; margin-left: 10.2rem; font-family: var(--f-ui); font-size: var(--text-xs); letter-spacing: 0.02em; text-transform: uppercase; color: #555; }
   .rec {
-    width: 3.1rem; height: 2.4rem;
-    background: #ececec; border: 2px solid var(--line); border-radius: 0.35rem;
+    grid-column: 2; grid-row: 1;
+    width: 3.4rem; height: 2.6rem;
+    background: var(--key); border: 2px solid var(--line); border-bottom-width: 4px; border-radius: var(--r-control);
     display: flex; align-items: center; justify-content: center;
+    position: relative;
   }
-  .rec:hover { background: #dddddd; }
+  .rec:hover { background: var(--key-hover); }
+  .rec:active { border-bottom-width: 2px; top: 2px; }
   .rec i { display: block; width: 1rem; height: 1rem; background: #444; border-radius: 50%; }
   .rec.recording i { border-radius: 0.1rem; }
   .setup-error { font-family: var(--f-ui); font-size: var(--text-sm); letter-spacing: 0.02em; text-transform: uppercase; margin-top: 0.8rem; text-align: center; max-width: 40rem; }
 
   /* selfie */
-  .camera-wrap { position: relative; margin-top: 3rem; }
+  .camera-wrap { position: relative; margin-top: 0.4rem; padding-top: 2.6rem; } /* arrow + shutter sit inside the box, so the pixel filter never clips them */
   .shutter {
-    position: absolute; left: 1.4rem; top: -0.55rem; width: 7rem; height: 0.55rem;
+    position: absolute; left: 1.4rem; top: 2.05rem; width: 7rem; height: 0.55rem;
     background: #000; border-radius: 0.2rem 0.2rem 0 0;
   }
-  .shutter-mark { position: absolute; left: 4.3rem; top: -2rem; width: 0; height: 0; border-left: 0.6rem solid transparent; border-right: 0.6rem solid transparent; border-top: 0.6rem solid #000; }
+  .shutter-mark { position: absolute; left: 4.3rem; top: 0.5rem; width: 0; height: 0; border-left: 0.6rem solid transparent; border-right: 0.6rem solid transparent; border-top: 0.6rem solid #000; animation: nudge 1.1s ease-in-out infinite alternate; }
+  @keyframes nudge { from { transform: translateY(0); } to { transform: translateY(0.45rem); } }
+  @media (prefers-reduced-motion: reduce) { .shutter-mark { animation: none; } }
   .camera {
     width: 34rem; height: 19.5rem;
     border: 2px solid #9a9a9a; border-radius: 0.4rem;
@@ -282,34 +304,40 @@
     border: 2px solid #9a9a9a; overflow: hidden; background: #ececec;
     display: flex; align-items: center; justify-content: center;
   }
-  .lens video, .lens img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
-  .lens .no-photo { width: 6rem; height: 3.6rem; border: 2px solid #9a9a9a; border-radius: 0.4rem; background: linear-gradient(to top right, transparent calc(50% - 1px), #9a9a9a 50%, transparent calc(50% + 1px)); }
+  .camera-feed { position: absolute; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
+  .lens.flash { animation: flash 500ms ease-out; }
+  @keyframes flash { from { background: #fff; } to { background: #ececec; } }
+  .lens { position: relative; }
+  .lens .glass { width: 5.2rem; height: 5.2rem; border-radius: 50%; border: 2px solid #9a9a9a; background: var(--tint); position: relative; }
+  .lens .glass::after { content: ""; position: absolute; left: 22%; top: 18%; width: 1.3rem; height: 0.8rem; border-radius: 50%; background: var(--paper); transform: rotate(-30deg); }
+  .cam-flash { position: absolute; left: 8.4rem; top: 1.1rem; width: 2.2rem; height: 2.2rem; border: 2px solid #9a9a9a; border-radius: 50%; }
+  .cam-mark { position: absolute; left: 1.3rem; bottom: 1rem; font-family: var(--f-ui); font-size: var(--text-sm); letter-spacing: 0.12em; text-transform: uppercase; color: #9a9a9a; }
 
   /* mood */
   .kao-grid {
-    margin-top: 1rem;
-    width: 46rem; height: 22rem;
-    border: 2px solid #c8c8c8; border-radius: 0.3rem;
+    margin-top: 1.4rem;
+    width: 46rem; height: calc(6 * 2.9rem + 2 * 0.6rem + 4px); /* exactly six rows: no half-cut row */
+    padding: 0.6rem;
+    border: 2px solid var(--rule); border-radius: var(--r-control);
     background: var(--paper);
-    overflow-y: auto;
-    display: grid; grid-template-columns: repeat(6, 1fr);
+    overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+    display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 2.9rem;
     align-content: start;
-    font-family: var(--f-ui); font-size: var(--text-lg); letter-spacing: 0.02em;
+    font-family: var(--f-ui); font-size: var(--text-md); letter-spacing: 0.02em;
   }
   .kao {
-    height: 3rem; padding: 0 0.3rem;
-    border-right: 1px solid #e2e2e2; border-bottom: 1px solid #e2e2e2;
+    padding: 0 0.3rem; border-radius: var(--r-small);
     white-space: nowrap; overflow: hidden;
     display: flex; align-items: center; justify-content: center;
   }
-  .kao:hover { background: #f2f2f2; }
-  .kao.selected { background: #dddddd; }
+  .kao:hover { background: var(--chrome); }
+  .kao.selected { background: var(--ink); color: var(--paper); }
 
   /* name */
   .step-name { justify-content: center; padding-bottom: 6rem; }
   .name-input {
     width: 41rem; height: 2.8rem;
-    border: 2px solid #9a9a9a; border-radius: 0.35rem;
+    border: 2px solid #9a9a9a; border-radius: var(--r-control);
     background: var(--paper);
     font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-lg);
     text-align: center; outline: none;
@@ -322,16 +350,17 @@
   .status {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
     width: 28.5rem; padding: 1rem 1.6rem 1.4rem;
-    background: #000; color: #fff; border-radius: 0.4rem;
+    background: #000; color: #fff; border-radius: var(--r-panel);
     z-index: 5;
   }
+  .panel:has(#status:not([hidden])) #setup { visibility: hidden; }
   .status .face { width: 3rem; height: 2.4rem; color: #fff; }
   .term {
     font-family: var(--f-data); font-size: var(--text-md); line-height: 1.2;
     white-space: pre-wrap; margin-top: 1rem; min-height: 9.6em;
   }
-  .progress { margin-top: 1.6rem; height: 2rem; border: 2px solid #fff; }
-  .progress i { display: block; height: 100%; width: 0; background: #666; transition: width 400ms ease; }
+  .progress { margin-top: 1.6rem; height: 1.4rem; border: 2px solid #fff; border-radius: var(--r-small); padding: 2px; }
+  .progress i { display: block; height: 100%; width: 0; background: #fff; border-radius: 1px; transition: width 400ms ease; }
   .status .btn { margin-top: 1rem; }
 
   /* ============================================================
@@ -349,7 +378,7 @@
   .start-input::placeholder { color: var(--ink); text-transform: uppercase; }
   .start-input:focus::placeholder { color: var(--muted); }
 
-  .chat-main { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 0.8rem 0.6rem 0.4rem; }
+  .chat-main { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 0.8rem 0.8rem 0.8rem; }
   .chat-head {
     flex: none; height: 19.5rem;
     display: grid; grid-template-columns: 1fr auto 1fr; align-items: start;
@@ -360,18 +389,19 @@
   .visible .chat-head { padding-top: 2.4rem; height: 14.8rem; }
 
   .list-frame {
-    flex: 1; min-height: 0;
-    border: 2px solid #c8c8c8; border-radius: 0.3rem;
-    background: rgba(255, 255, 255, 0.6);
-    padding: 0.4rem 0 0.4rem 0.4rem;
+    flex: 0 1 auto; min-height: 0; margin-top: auto; /* hug the messages; grow up to the space available */
+    border: 2px solid var(--rule); border-bottom: none; border-radius: var(--r-control) var(--r-control) 0 0;
+    background: var(--paper);
+    padding: 0.5rem 0 0.5rem 0.5rem;
     display: flex;
   }
   .list {
     flex: 1; overflow-y: scroll;
-    display: flex; flex-direction: column; gap: 0.5rem;
+    display: flex; flex-direction: column; gap: 0.4375rem;
     padding-right: 0.5rem;
     scrollbar-width: thin; scrollbar-color: var(--line) var(--chrome);
   }
+  .list > :first-child { margin-top: auto; } /* messages sit at the bottom, newest last */
   .list::-webkit-scrollbar { width: 0.8rem; }
   .list::-webkit-scrollbar-track { background: var(--chrome); border: 1px solid #c8c8c8; }
   .list::-webkit-scrollbar-thumb {
@@ -381,41 +411,53 @@
 
   .row {
     flex: none;
-    display: flex; align-items: baseline; gap: 2rem;
-    min-height: 2.5rem; padding: 0.5rem 1.1rem;
-    border: 2px solid var(--line); border-radius: 0.25rem;
+    display: flex; align-items: baseline; gap: 1.75rem;
+    min-height: 2.1875rem; padding: 0.4375rem 0.9625rem;
+    border: 2px solid var(--line); border-radius: var(--r-small);
     background: var(--paper); color: var(--ink);
   }
   .row.bot { background: var(--ink); border-color: var(--ink); color: #fff; }
   .row-label {
     flex: none; font-family: var(--f-ui); letter-spacing: 0.02em;
-    font-size: var(--text-lg); line-height: 1.2; text-transform: uppercase;
+    font-size: var(--text-msg); line-height: 1.2; text-transform: uppercase;
   }
-  .row-msg { flex: 1; text-align: right; font-size: var(--text-lg); line-height: 1.35; overflow-wrap: anywhere; }
-  .row.context { background: transparent; border: 1px solid #c8c8c8; color: var(--muted); }
+  .row-msg { flex: 1; text-align: right; font-size: var(--text-msg); line-height: 1.35; overflow-wrap: anywhere; }
+  .slide-in { animation: slide-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @keyframes slide-in { from { opacity: 0; transform: translateY(1.2rem); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .slide-in { animation: none; } }
+  .row.context { background: transparent; border: 1px dashed var(--rule); color: var(--muted); }
 
   .visible .src-group .row.bot { cursor: pointer; }
-  .src-group.open { border: 1px solid #c8c8c8; padding: 0 0.5rem 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
-  .src-head { display: flex; justify-content: space-between; align-items: flex-start; margin: 0 -0.5rem; }
+    /* Closed, the frame is still there but invisible (and pulled out 1px so the row lines up
+     with the other rows); opening animates it in (see openSource). */
+  .src-group { flex: none; border: 1px solid transparent; border-radius: var(--r-control); margin: -1px; display: flex; flex-direction: column; gap: 0.4375rem; }
+  .src-group.open { border-color: var(--rule); padding: 0.4375rem; background: var(--chrome); }
+  .src-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
   .enter {
     font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-sm); text-transform: uppercase;
-    border: 1px solid currentColor; padding: 0.1rem 0.4rem; background: var(--paper);
+    border: 1px solid currentColor; border-radius: var(--r-small); padding: 0.15rem 0.5rem; background: var(--paper);
+    flex: none;
   }
-  .enter:hover { background: #ececec; }
+  .enter:hover { background: var(--key); }
 
+  /* the input closes the bottom of the list frame, like the edit line of a terminal */
   .msg-input {
-    flex: none; height: 3rem;
-    border: none; outline: none; background: transparent;
+    flex: none; height: 3rem; width: 100%;
+    border: 2px solid var(--rule); border-radius: 0 0 var(--r-control) var(--r-control);
+    outline: none; background: var(--paper);
     font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-lg);
-    padding: 0 0.6rem;
+    padding: 0 0.9rem;
   }
-  .msg-input:disabled { color: var(--muted); }
+  .msg-input::placeholder { color: var(--muted); text-transform: uppercase; }
+  .msg-input:focus { border-top-color: var(--line); }
+  .msg-input:disabled { color: transparent; }
+  .msg-input:disabled::placeholder { color: transparent; }
 
   /* visible sidebar */
   .sidebar {
-    width: 17.5rem; flex: none;
+    width: 18rem; flex: none;
     background: var(--sidebar);
-    border: 2px solid #2a2a2a; border-radius: 0.5rem;
+    border: 2px solid #2a2a2a; border-radius: var(--r-panel);
     padding: 0.8rem 0.7rem;
     display: flex; flex-direction: column; gap: 0.6rem;
     color: #fff;
@@ -426,17 +468,59 @@
   .people svg { width: 100%; height: 100%; }
   .people .count { margin-left: auto; font-family: var(--f-ui); font-size: var(--text-sm); color: #fff; }
   .side-card .card { background: var(--sidebar); color: #fff; width: 100%; }
-  .slots { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.3rem; }
+  .visible .window-body { gap: 0; }
+  /* Cartridge stack: two columns, rows overlap like cards in a box. Row 0 (bottom) is in
+     front and lightest; each row up sits further back and darker. Sizes come from the
+     stack's own box (container units), so the stack always fits. */
+  .slots { flex: 1; min-height: 0; position: relative; container-type: size; margin-top: 0.6rem; }
   .slot {
-    position: relative;
-    clip-path: polygon(0 0, 78% 0, 100% 16%, 100% 100%, 0 100%);
-    background: #141414;
-    transition: transform 160ms ease;
+    --gap: 0.6rem;
+    --W: min(calc((100cqw - var(--gap)) / 2), calc(100cqh / 2.45 * 0.837));
+    --H: calc(var(--W) / 0.837);
+    --step: calc(var(--H) * 0.58);
+    position: absolute; width: var(--W); height: var(--H);
+    bottom: calc(var(--row) * var(--step));
+    left: calc(50cqw - var(--W) - var(--gap) / 2 + var(--col) * (var(--W) + var(--gap)));
   }
-  .slot.filled { background: #3c423f; cursor: pointer; padding: 0.5rem 0.5rem 1rem; }
-  .slot.filled::after { content: ""; position: absolute; left: 0.3rem; right: 0.3rem; bottom: 0.3rem; height: 0.2rem; background: #8e8e8e; }
-  .slot.sel { transform: translateY(-0.7rem); background: #8f9c93; }
-  .slot img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0.3rem; }
+  /* Rows with no cartridge yet ("future" rows) sit ABOVE the stack without overlapping it
+     or each other. They shrink if needed so everything fits. JS sets --nf (rows in the
+     stack), --has (1 if there is a stack), --k (future rows) and --e (which future row). */
+  .slot.future {
+    --top: calc(var(--has) * ((var(--nf) - 1) * var(--step) + var(--H)));
+    --he: min(var(--H), calc((100cqh - var(--top) - var(--k) * var(--gap)) / var(--k)));
+    --we: calc(var(--he) * 0.837);
+    width: var(--we); height: var(--he);
+    bottom: calc(var(--top) + var(--gap) * var(--has) + var(--e) * (var(--he) + var(--gap)));
+    left: calc(50cqw - var(--W) - var(--gap) / 2 + var(--col) * (var(--W) + var(--gap)) + (var(--W) - var(--we)) / 2);
+  }
+  .cart { position: relative; width: 100%; height: 100%; transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .cart > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+  /* The cartridge art (assets/id card.svg) includes its own drop shadow, so the image is
+     bigger than the shell: these offsets line the shell up with the .cart box. */
+  .cart-art {
+    position: absolute; left: -12.21%; top: -5.44%; width: 125%; height: 124.55%;
+    max-width: none; display: block; pointer-events: none; user-select: none;
+  }
+  /* rows further back are darker */
+  .slot[data-row="1"] .cart-art { filter: brightness(0.62); }
+  .slot[data-row="2"] .cart-art { filter: brightness(0.42); }
+  .slot[data-row="1"] .label { opacity: 0.75; }
+  .slot[data-row="2"] .label { opacity: 0.6; }
+  .slot.sel .label { opacity: 1; }
+  .slot.filled .cart { cursor: pointer; }
+  .slot.filled:hover .cart { transform: translateY(-0.3rem); }
+  /* selected: pops up and comes to the front, so nothing covers it */
+  .slot.sel { z-index: 20 !important; }
+  .slot.sel .cart, .slot.sel:hover .cart { transform: translateY(calc(var(--H) * -0.3)) scale(1.04); }
+  .slot.sel .cart-art, .slot.sel[data-row] .cart-art { filter: brightness(1.12) contrast(1.05) drop-shadow(0 0.4rem 0.6rem rgba(0, 0, 0, 0.6)); }
+  /* the photo shows on the selected cartridge's label, multiplied onto the sage glass */
+  .cart .label {
+    position: absolute; left: 4.6%; top: 4.9%; width: 90.3%; height: 71.7%;
+    clip-path: polygon(0 0, 80% 0, 100% 20%, 100% 100%, 0 100%);
+    border-radius: 0.3rem;
+    mix-blend-mode: multiply;
+  }
+  .cart .label img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   /* ARCHIVE: the colour flip */
   .archive .panel { background: #000; border-color: #5a5a5a; color: #fff; }
@@ -447,20 +531,25 @@
       radial-gradient(34% 34% at 70% 36%, rgba(60, 60, 60, 0.8), rgba(60, 60, 60, 0) 70%),
       #000;
   }
-  .archive .list-frame { background: transparent; border-color: #5a5a5a; }
+  .archive .list-frame { background: #000; border-color: #5a5a5a; }
+  .archive .msg-input { background: #000; border-color: #5a5a5a; }
   .archive .row.bot { border-color: #fff; }
   .archive .row.context { border-color: #5a5a5a; }
-  .archive .head-card .card, .archive .src-head .card { background: #000; color: #fff; }
+  .archive .head-card .card { background: #000; color: #fff; }
+  .archive .src-head .card { background: #111; color: #fff; }
   .archive .enter { background: #000; }
   .archive .enter:hover { background: #222; }
-  .archive .src-group.open { border-color: #5a5a5a; }
+  .archive .src-group.open { border-color: #5a5a5a; background: #111; }
+  .archive .row.context { color: #8a8a8a; }
   .archive .msg-input { color: #fff; }
+  .archive .msg-input:disabled { color: transparent; }
   .archive .list { scrollbar-color: #5a5a5a #000; }
   .archive .list::-webkit-scrollbar-track { background: #000; border-color: #5a5a5a; }
 
   /* ============================================================
      DOCK
      ============================================================ */
+  .dock, .pixel-toggle { z-index: 100000; }
   .dock {
     position: fixed; left: 50%; bottom: 0.6rem; transform: translateX(-50%);
     display: flex; gap: 0.8rem; align-items: flex-end;
@@ -468,20 +557,113 @@
   .dock button { width: 3.4rem; height: 2.8rem; display: flex; }
   .dock svg { width: 100%; height: 100%; }
 
+  /* ============================================================
+     DATA WINDOW (movable). All OT Bulb, all text and lines.
+     ============================================================ */
+  .datawin {
+    position: fixed; left: 0; top: 0;
+    width: 50rem; height: 36rem; /* always the same size; the contents scroll */
+    max-width: calc(100vw - 2rem); max-height: calc(100vh - 2rem);
+    display: flex; flex-direction: column;
+    font-family: var(--f-data); font-size: var(--text-sm); line-height: 1.5;
+    box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.35);
+    border-radius: 0.6rem;
+  }
+  .dw-tab {
+    flex: none; display: flex; justify-content: space-between; align-items: center;
+    background: #fff; color: #000; border: 2px solid #000; border-bottom: none;
+    border-radius: 0.6rem 0.6rem 0 0; padding: 0.3rem 0.9rem;
+    font-size: var(--text-md); cursor: grab; user-select: none; touch-action: none;
+  }
+  .dw-tab:active { cursor: grabbing; }
+  .dw-close { font-family: var(--f-data); font-size: var(--text-sm); }
+  .dw-close:hover { text-decoration: underline; }
+  .dw-body {
+    flex: 1; min-height: 0; overflow: auto;
+    background: #000; color: #fff; border: 2px solid #000; border-radius: 0 0 0.6rem 0.6rem;
+    padding: 1rem 1.2rem 1.4rem;
+    scrollbar-width: thin; scrollbar-color: #5a5a5a #000;
+  }
+  .dw-dim { color: #8a8a8a; }
+  .dw-path { font-size: var(--text-md); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  .dw-rule { border-top: 1px dashed #8a8a8a; margin: 0.5rem 0 1rem; }
+  .dw-conv { border: 1px solid #fff; }
+  .dw-head { display: block; width: fit-content; border-right: 1px solid #fff; border-bottom: 1px solid #fff; padding: 0 0.5rem; white-space: pre; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .dw-lines { padding: 0.1rem 0.5rem 0.3rem; }
+  .dw-line { display: grid; grid-template-columns: 4ch 5ch 5ch 6ch minmax(0, 1fr) 6ch; white-space: pre; }
+  .dw-line .c { overflow: hidden; text-overflow: ellipsis; }
+  .dw-line .r { text-align: right; }
+  .dw-line.pick { cursor: pointer; }
+  .dw-line.pick:hover .c { text-decoration: underline; }
+  .dw-line.sel { background: #fff; color: #000; }
+  .dw-match { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  .dw-snap { margin-left: 0.5ch; border-left: 1px solid #fff; padding: 0 0 0.2rem 7ch; }
+  .dw-gap { margin: 1.4rem 0.5rem; white-space: pre; }
+  .dw-note { color: #8a8a8a; white-space: pre-wrap; }
+
+  /* ============================================================
+     MAP WINDOW (movable): conversations as a timeline, newest at the top
+     ============================================================ */
+  .mapwin { width: 40rem; height: 44rem; }
+  .mw-frame { position: relative; flex: 1; min-height: 0; border: 2px solid #000; border-radius: 0 0 0.6rem 0.6rem; overflow: hidden; background: #000; }
+  .mw-body { position: absolute; inset: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #5a5a5a #000; }
+  .mw-map {
+    position: relative; min-height: 100%;
+    /* dotted screen, fading to black further back in time */
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.55) 55%, #000 100%),
+      radial-gradient(circle, rgba(255, 255, 255, 0.2) 0.9px, transparent 1.2px) 0 0 / 5px 5px,
+      #1d1d1d;
+    color: #fff; font-family: var(--f-data);
+  }
+  .mw-axis { position: absolute; left: 3.2rem; top: 0; bottom: 0; border-left: 2px solid #bdbdbd; }
+  .mw-grid { position: absolute; left: 0.4rem; right: 0; border-top: 1px dashed #cfcfcf; }
+.mw-date { position: absolute; left: 0.7rem; transform: translateY(-1.55em); font-size: var(--text-xs); color: #e6e6e6; white-space: pre; line-height: 1.5; }
+  .mw-time { position: absolute; left: 0.45rem; transform: translateY(-50%); font-size: var(--text-xs); color: #cfcfcf; white-space: pre; }
+  .mw-tick { position: absolute; left: 3.2rem; width: 0.6rem; border-top: 2px solid #bdbdbd; }
+  .mw-edges { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+  .mw-node { position: absolute; --s: 2.4rem; }
+  .mw-node .sq { position: relative; width: var(--s); height: var(--s); background: #8a8a8a; }
+  .mw-node .sq img { width: 100%; height: 100%; display: block; }
+  .mw-node.opened .sq { background: #fff; box-shadow: 0 0 0 0.35rem #9c9c9c; }
+  .mw-node.current { --s: 3.8rem; }
+  .mw-node.current .sq { box-shadow: 0 0 0 0.55rem #9c9c9c; }
+  .mw-node .brackets { position: absolute; inset: 0.3rem; pointer-events: none; }
+  .mw-label {
+    position: absolute; left: 0; top: calc(var(--s) + 0.1rem); white-space: pre;
+    background: #e6e6e6; color: #000; font-size: var(--text-xs); padding: 0 0.35rem; line-height: 1.5;
+  }
+  .mw-node.opened .mw-label { top: calc(var(--s) + 0.4rem); left: 0.1rem; }
+  .mw-node.current .mw-label { top: auto; bottom: calc(var(--s) + 0.7rem); left: -0.3rem; }
+  .mw-pips { position: absolute; left: 0; top: calc(var(--s) + 1.45rem); display: flex; gap: 0.2rem; }
+  .mw-pips i { width: 0.7rem; height: 0.7rem; background: #ddd; display: block; }
+  .mw-pips span { font-size: var(--text-xs); color: #ddd; margin-left: 0.15rem; line-height: 0.7rem; }
+  /* the radiating stroke: each node in the chain pings in turn */
+  .mw-node .ring { position: absolute; inset: -0.6rem; border: 2px solid #fff; opacity: 0; pointer-events: none; }
+  .mw-node.ping .ring { animation: mw-ring 1.1s ease-out; }
+  @keyframes mw-ring { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.35); } }
+  @media (prefers-reduced-motion: reduce) { .mw-node.ping .ring { animation: none; opacity: 1; } }
+  .mw-info {
+    position: absolute; top: 0.6rem; right: 0.6rem; width: 12rem; z-index: 2;
+    background: #000; color: #fff; border: 2px solid #fff;
+    font-family: var(--f-data); font-size: var(--text-xs); line-height: 1.35;
+    padding: 0.3rem 0.5rem; white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .mw-empty { padding: 2rem; color: #8a8a8a; font-family: var(--f-data); }
+
   /* pixel effect on/off, bottom right */
   .pixel-toggle {
     position: fixed; right: 1rem; bottom: 1rem;
     font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-xs); text-transform: uppercase;
     padding: 0.3rem 0.6rem;
-    background: var(--chrome); border: 2px solid #000; border-radius: 0.3rem;
+    background: var(--chrome); border: 2px solid #000; border-bottom-width: 3px; border-radius: var(--r-control);
   }
-  .pixel-toggle:hover { background: #dddddd; }
+  .pixel-toggle:hover { background: var(--key-hover); }
 </style>
 </head>
 <body>
 
 <canvas id="sky" class="px-img" data-px-width="1" aria-hidden="true"></canvas>
-<div id="scanlines" aria-hidden="true"></div>
 
 <main id="desktop">
   <section id="window" class="window w-setup">
@@ -537,13 +719,16 @@
               <button id="shutter" class="shutter" aria-label="Take photo"></button>
               <div class="camera">
                 <div class="viewfinder"></div>
+                <div class="cam-flash"></div>
+                <div class="cam-mark">FriendBot</div>
                 <div class="lens-outer"><div class="lens-ring"><div class="lens" id="lens">
-                  <div class="no-photo" id="no-photo"></div>
-                  <video id="camera-video" class="px-img photo-grey" data-px-grey data-px-levels="4" data-px-width="1" autoplay playsinline muted hidden></video>
-                  <img id="photo-preview" class="px-img photo-grey" data-px-grey data-px-levels="4" data-px-width="1" alt="" hidden>
+                  <div class="glass"></div>
                 </div></div></div>
               </div>
             </div>
+            <!-- The camera feed is never shown, so nobody fusses over how they look.
+                 It still has to play (invisibly) so the shutter can grab a frame. -->
+            <video id="camera-video" class="camera-feed" playsinline muted aria-hidden="true"></video>
             <canvas id="photo-canvas" hidden></canvas>
             <p id="camera-error" class="setup-error px" hidden></p>
             <div class="actions">
@@ -587,7 +772,7 @@
               <div id="list-own" class="list"></div>
               <div id="list-archive" class="list" hidden></div>
             </div>
-            <input id="message-input" class="msg-input px" data-px-extra="#9a9a9a" maxlength="500" autocomplete="off" aria-label="Message">
+            <input id="message-input" class="msg-input px" data-px-extra="#9a9a9a" placeholder="Type a message" maxlength="500" autocomplete="off" aria-label="Message">
           </div>
         </div>
 
@@ -604,6 +789,18 @@
 </main>
 
 <nav id="dock" class="dock" aria-label="Dock"></nav>
+
+<!-- DATA window: the conversations you have tracked through, as raw data (folder icon) -->
+<section id="datawin" class="datawin" hidden aria-label="Data">
+  <header id="dw-tab" class="dw-tab"><span>DATA</span><button id="dw-close" class="dw-close" aria-label="Close the data window">[X]</button></header>
+  <div id="dw-body" class="dw-body"></div>
+</section>
+
+<!-- MAP window: every conversation used by the ones you opened, as a timeline (floppy icon) -->
+<section id="mapwin" class="datawin mapwin" hidden aria-label="Map">
+  <header id="mw-tab" class="dw-tab"><span>MAP</span><button id="mw-close" class="dw-close" aria-label="Close the map">[X]</button></header>
+  <div class="mw-frame"><div id="mw-body" class="mw-body"></div><div id="mw-info" class="mw-info" hidden></div></div>
+</section>
 <button id="pixel-toggle" class="pixel-toggle" hidden></button>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -721,6 +918,7 @@
     rows: [],           // your chat: { sender, text, at, source?, lab }
     mode: 'obscured',   // 'obscured' | 'visible'
     path: [],           // archive levels: [{ convId, name, highlightId }]
+    trail: [],          // every level tracked through (kept when stepping back), for the data window
     selected: null      // conversation id of the selected contributor
   };
 
@@ -754,16 +952,29 @@
   }
 
   // info: { number, name, mood, startedAt, lastAt, count }
-  function cardEl(info, { showNumber = true } = {}) {
+  function cardEl(info, { showNumber = true, oneLine = false } = {}) {
     const card = el('div', 'card px');
     const top = el('div', 'card-row');
     if (showNumber && info.number != null) top.appendChild(el('span', 'c-num', '#' + info.number));
     top.appendChild(el('span', 'c-name', info.name || ''));
     if (info.mood) top.appendChild(el('span', 'c-mood', info.mood));
-    const dur = el('span', 'c-dur'); dur.innerHTML = ICON.clock;
-    dur.append(fmtDuration(info.startedAt ? (info.lastAt || info.startedAt) - info.startedAt : 0));
-    const cnt = el('span', 'c-count'); cnt.innerHTML = ICON.bubble; cnt.append(String(info.count ?? 0));
-    top.append(dur, cnt);
+    // Stats only when they are known (if get_conversation_card fails, only the name is shown).
+    if (info.startedAt) {
+      const dur = el('span', 'c-dur'); dur.innerHTML = ICON.clock;
+      dur.append(fmtDuration((info.lastAt || info.startedAt) - info.startedAt));
+      top.append(dur);
+    }
+    if (info.count != null) {
+      const cnt = el('span', 'c-count'); cnt.innerHTML = ICON.bubble; cnt.append(String(info.count));
+      if (!info.startedAt) cnt.style.marginLeft = 'auto';
+      top.append(cnt);
+    }
+    // oneLine: the start time joins the top row (used above a selected message)
+    if (oneLine) {
+      if (info.startedAt) top.appendChild(el('span', 'c-when', fmtStarted(info.startedAt)));
+      card.append(top);
+      return card;
+    }
     const bottom = el('div', 'card-row', info.startedAt ? fmtStarted(info.startedAt) : '');
     card.append(top, bottom);
     return card;
@@ -823,10 +1034,11 @@
     }
     return photoCache.get(path);
   }
+  // A portrait: the photo as dots (never the photo itself). dataset.photo remembers which photo.
   function portraitImg(url) {
-    const img = el('img', 'px-img photo-grey');
-    img.dataset.pxGrey = ''; img.dataset.pxLevels = '4'; img.dataset.pxWidth = '1';
-    img.alt = ''; img.src = url;
+    const img = el('img', 'dots');
+    img.alt = ''; img.dataset.photo = url;
+    dotPhoto(url, { cols: 34, aspect: 1 }).then(src => { if (src) img.src = src; });
     return img;
   }
 
@@ -862,6 +1074,31 @@
   // pitch (Hz) -> height in the graph (log scale, 70-500 Hz)
   const pitchY = (hz, h) => h * (0.85 - 0.7 * (Math.log(hz / 70) / Math.log(500 / 70)));
 
+  // Strokes a smooth curve through points (sorted by x) with cubic beziers.
+  // Monotone tangents (Fritsch-Carlson): the curve never overshoots a point,
+  // so a flat stretch stays flat and peaks stay where the voice actually was.
+  function smoothCurve(c, pts) {
+    const n = pts.length;
+    const d = [], m = [];
+    for (let i = 0; i < n - 1; i++) d.push((pts[i + 1][1] - pts[i][1]) / ((pts[i + 1][0] - pts[i][0]) || 1));
+    for (let i = 0; i < n; i++) {
+      if (i === 0) m.push(d[0] || 0);
+      else if (i === n - 1) m.push(d[n - 2]);
+      else m.push(d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2);
+    }
+    for (let i = 0; i < n - 1; i++) {
+      if (d[i] === 0) { m[i] = m[i + 1] = 0; continue; }
+      const a = m[i] / d[i], b = m[i + 1] / d[i], r = a * a + b * b;
+      if (r > 9) { const t = 3 / Math.sqrt(r); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+    }
+    c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 0; i < n - 1; i++) {
+      const dx = (pts[i + 1][0] - pts[i][0]) / 3;
+      c.bezierCurveTo(pts[i][0] + dx, pts[i][1] + m[i] * dx, pts[i + 1][0] - dx, pts[i + 1][1] - m[i + 1] * dx, pts[i + 1][0], pts[i + 1][1]);
+    }
+    c.stroke();
+  }
+
   function drawGraph(wave, segments, progress) {
     sizeGraph();
     const c = graph.getContext('2d'), w = graph.width, h = graph.height, k = devicePixelRatio;
@@ -871,22 +1108,32 @@
     c.lineWidth = 1 * k;
     c.beginPath(); c.moveTo(x0, h * 0.13); c.lineTo(x0, h); c.moveTo(x1, h * 0.13); c.lineTo(x1, h);
     c.moveTo(x0, h * 0.5); c.lineTo(x1, h * 0.5); c.stroke();
-    // waveform
+    const tx = t => x0 + (x1 - x0) * (t / RECORD_SECONDS);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    // waveform: a smooth line through the midpoints between samples
     if (wave.length > 1) {
-      c.lineWidth = 1.2 * k; c.beginPath();
-      wave.forEach((v, i) => {
-        const x = x0 + (x1 - x0) * (i / (RECORD_SECONDS * 60));
-        const y = h * 0.5 - v * h * 0.42;
-        i ? c.lineTo(x, y) : c.moveTo(x, y);
-      });
+      const pts = wave.map((v, i) => [x0 + (x1 - x0) * (i / (RECORD_SECONDS * 60)), h * 0.5 - v * h * 0.42]);
+      c.lineWidth = 1.2 * k;
+      c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length - 1; i++) {
+        c.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2);
+      }
+      c.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
       c.stroke();
     }
-    // detected pitch, one thick bar per half second
-    segments.forEach(s => {
-      if (!s.hz) return;
-      const xa = x0 + (x1 - x0) * (s.t0 / RECORD_SECONDS), xb = x0 + (x1 - x0) * (s.t1 / RECORD_SECONDS);
-      c.fillRect(xa, pitchY(s.hz, h) - 3 * k, xb - xa, 6 * k);
-    });
+    // detected pitch: one thick bezier curve per stretch of voice (silence breaks it)
+    c.lineWidth = 5 * k;
+    let run = [];
+    const flush = () => {
+      if (!run.length) return;
+      const pts = [[tx(run[0].t0), pitchY(run[0].hz, h)]];
+      run.forEach(s => pts.push([tx((s.t0 + s.t1) / 2), pitchY(s.hz, h)]));
+      pts.push([tx(run[run.length - 1].t1), pitchY(run[run.length - 1].hz, h)]);
+      smoothCurve(c, pts);
+      run = [];
+    };
+    segments.forEach(s => { if (s.hz) run.push(s); else flush(); });
+    flush();
     // playhead
     if (progress > 0) {
       c.lineWidth = 1 * k;
@@ -950,7 +1197,7 @@
         wave.push(Math.max(-1, Math.min(1, smooth)));
         meter.forEach((m, i) => { m.classList.toggle('on', rms * 12 > i / 3); m.style.width = (40 + Math.min(60, rms * 600)) + '%'; });
         if (rms > 0.01) { const p = framePitch(buf, 0, buf.length, ctx.sampleRate); if (p) frames.push(p); }
-        if (t - segStart >= 0.5 || t >= RECORD_SECONDS || !recording) {
+        if (t - segStart >= 0.25 || t >= RECORD_SECONDS || !recording) {
           frames.sort((a, b) => a - b);
           segments.push({ t0: segStart, t1: Math.min(t, RECORD_SECONDS), hz: frames.length >= 2 ? frames[frames.length >> 1] : null });
           frames.length = 0; segStart = t;
@@ -1002,11 +1249,12 @@
     $('camera-error').hidden = true;
     try {
       cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      $('camera-video').srcObject = cameraStream;
-      $('camera-video').hidden = false;
-      $('no-photo').hidden = true;
+      const v = $('camera-video');
+      v.srcObject = cameraStream;
+      await v.play();
     } catch (err) {
       console.error(err);
+      stopCamera();
       $('camera-error').textContent = "Couldn't use the camera. A photo is required to continue. Allow camera access, then click the shutter to try again.";
       $('camera-error').hidden = false;
     }
@@ -1025,17 +1273,14 @@
       state.photoBlob = blob;
       if (state.photoUrl) URL.revokeObjectURL(state.photoUrl);
       state.photoUrl = URL.createObjectURL(blob);
-      $('photo-preview').src = state.photoUrl;
-      $('photo-preview').hidden = false;
-      v.hidden = true;
       stopCamera();
+      const lens = $('lens'); lens.classList.remove('flash'); void lens.offsetWidth; lens.classList.add('flash');
       $('retake-btn').hidden = false;
       $('selfie-continue').hidden = false;
     }, 'image/jpeg', 0.9);
   });
   $('retake-btn').addEventListener('click', () => {
     state.photoBlob = null;
-    $('photo-preview').hidden = true;
     $('retake-btn').hidden = true;
     $('selfie-continue').hidden = true;
     startCamera();
@@ -1163,11 +1408,16 @@
     ownRowsRelabel();
     renderHeader();
     renderSidebar();
+    if (!isVisible()) { $('datawin').hidden = true; $('mapwin').hidden = true; }
+    scheduleData();
   }
 
   $('eye').addEventListener('click', () => {
-    if (inArchive()) { state.path = []; state.mode = 'obscured'; }
+    if (inArchive()) { state.path = []; state.trail = state.trail.slice(0, 1); state.mode = 'obscured'; }
     else state.mode = state.mode === 'visible' ? 'obscured' : 'visible';
+    // Back to start mode: nothing is selected. Into visible mode: the newest bot message is.
+    if (state.mode === 'obscured') unselectMessages(listOwn);
+    else selectNewestOwn();
     if (state.mode === 'visible' && state.number == null) getCard(state.conversationId).then(c => { if (c) { state.number = c.number; renderHeader(); } });
     renderChrome();
   });
@@ -1178,24 +1428,11 @@
     dock.replaceChildren();
     const add = (icon, label, fn) => { const b = el('button', 'px'); b.innerHTML = ICON[icon]; b.setAttribute('aria-label', label); b.title = label; b.addEventListener('click', fn); dock.appendChild(b); };
     if (!state.conversationId) { add('monitor', 'FriendBot', () => {}); return; }
-    if (isVisible()) add('folder', 'Open the selected archive', () => {
-      const c = currentContributors().find(c => c.convId === state.selected);
-      if (c) enterArchive(c.convId, c.name, c.messageId);
-    });
+    if (isVisible()) add('folder', 'Data: the conversations you have tracked through', toggleData);
     add('monitor', 'Back to your conversation', () => { if (inArchive()) leaveArchive(0); });
-    if (isVisible()) add('floppy', 'Save this transcript', saveTranscript);
+    if (isVisible()) add('floppy', 'Map: the conversations used along your trail', toggleMap);
   }
   renderDock();
-
-  function saveTranscript() {
-    const list = inArchive() ? $('list-archive') : $('list-own');
-    const lines = [...list.querySelectorAll('.row:not(.context)')].map(r =>
-      r.querySelector('.row-label').textContent + ': ' + r.querySelector('.row-msg').textContent);
-    const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
-    const a = el('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'friendbot-' + (inArchive() ? state.path[state.path.length - 1].name : state.name).toLowerCase() + '.txt';
-    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
 
   // ---------- contributors (whose words the bot reused), most recent first ----------
   let archiveContributors = [];
@@ -1246,8 +1483,66 @@
     box.classList.toggle('bot-hidden', !!black);
     const cur = box.querySelector('img');
     if (black || !url) { box.replaceChildren(); return; }
-    if (cur && cur.src === url) return;
+    if (cur && cur.dataset.photo === url) return;
     box.replaceChildren(portraitImg(url));
+  }
+
+  // ---------- dot filter: every photo on the page is shown this way ----------
+  // The photo is reduced to a coarse grid (cols across). Each cell either gets a dot or not,
+  // and every dot is the same size: darker areas simply get more dots (ordered dithering
+  // with a 4x4 Bayer pattern). Dots are dark on transparent, so the box behind them (sage
+  // glass, or the portrait tint) shows between. The original photo is never displayed.
+  // Each version is made once and kept in memory, like the photos themselves.
+  const DOTS = { ink: '#1f2622', size: 0.78, contrast: 1.4, cellPx: 8 };
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16);
+  const dotCache = new Map();
+  function dotPhoto(url, { cols = 36, aspect = 1 } = {}) {
+    const key = url + '|' + cols + '|' + aspect;
+    if (!dotCache.has(key)) dotCache.set(key, new Promise(resolve => {
+      const im = new Image();
+      im.onload = () => {
+        const rows = Math.max(1, Math.round(cols / aspect));
+        // 1. shrink the photo (cover-cropped) to one pixel per cell
+        const small = document.createElement('canvas'); small.width = cols; small.height = rows;
+        const sx = small.getContext('2d', { willReadFrequently: true });
+        sx.imageSmoothingQuality = 'high';
+        const scale = Math.max(cols / im.width, rows / im.height);
+        const dw = im.width * scale, dh = im.height * scale;
+        sx.drawImage(im, (cols - dw) / 2, (rows - dh) / 2, dw, dh);
+        const px = sx.getImageData(0, 0, cols, rows).data;
+        // auto levels: stretch this photo's own darkest..lightest (2%..98%) to full range,
+        // so a dim or flat photo still reads clearly at this low resolution
+        const L = [];
+        for (let i = 0; i < px.length; i += 4) L.push((0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]) / 255);
+        const sorted = L.slice().sort((a, b) => a - b);
+        const lo = sorted[Math.floor(sorted.length * 0.02)], hi = sorted[Math.floor(sorted.length * 0.98)];
+        const span = Math.max(0.08, hi - lo);
+        // 2. one same-size dot per cell that is dark enough
+        const c = DOTS.cellPx, r = c * DOTS.size / 2;
+        const out = document.createElement('canvas'); out.width = cols * c; out.height = rows * c;
+        const ox = out.getContext('2d'); ox.fillStyle = DOTS.ink;
+        for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+          let d = 1 - Math.min(1, Math.max(0, (L[y * cols + x] - lo) / span));
+          d = (d - 0.5) * DOTS.contrast + 0.5;
+          if (d > BAYER[(y % 4) * 4 + (x % 4)]) { ox.beginPath(); ox.arc(x * c + c / 2, y * c + c / 2, r, 0, Math.PI * 2); ox.fill(); }
+        }
+        resolve(out.toDataURL('image/png'));
+      };
+      im.onerror = () => resolve(null);
+      im.src = url;
+    }));
+    return dotCache.get(key);
+  }
+
+  // ---------- cartridges (the photo slots in the sidebar) ----------
+  // Filled slots use the cartridge art in assets/id card.svg; empty ones are its outline.
+  const CART_ART = 'assets/id%20card.svg';
+  const CART_SHELL = 'M152.516 33.5095C154.305 35.2087 155.318 37.5682 155.318 40.0358V62.3013C155.318 63.1495 154.862 63.9322 154.124 64.3501C153.386 64.768 152.93 65.5507 152.93 66.3989V73.8874C152.93 74.8968 153.365 75.8571 154.124 76.5225C154.883 77.1878 155.318 78.1482 155.318 79.1575V171.446C155.318 173.103 153.975 174.446 152.318 174.446H19.9004C18.2437 174.446 16.9005 173.103 16.9004 171.446V168.963C16.9004 168.113 17.3563 167.328 18.0947 166.907C18.8331 166.486 19.2891 165.702 19.2891 164.852V141.361C19.2891 140.513 18.8328 139.73 18.0947 139.312C17.3566 138.894 16.9004 138.111 16.9004 137.263V12C16.9004 10.3432 18.2436 9.00005 19.9004 9H123.113C125.419 9 127.638 9.88548 129.31 11.4737L152.516 33.5095Z';
+  function cartridgeSVG(kind) {
+    if (kind === 'empty') {
+      return `<svg viewBox="16.9 9 138.4 165.4" aria-hidden="true"><path d="${CART_SHELL}" fill="none" stroke="#222" stroke-width="1.6"/></svg>`;
+    }
+    return `<img class="cart-art" src="${CART_ART}" alt="" draggable="false">`;
   }
 
   // ---------- sidebar ----------
@@ -1268,15 +1563,39 @@
 
     const slots = $('slots');
     slots.replaceChildren();
+    const nf = Math.min(3, Math.ceil(contributors.length / 2)); // rows that hold a cartridge
     for (let i = 0; i < 6; i++) {
       const c = contributors[i];
       const slot = el('div', 'slot');
+      const row = Math.floor(i / 2); // fill from the bottom row up
+      slot.style.setProperty('--row', row);
+      slot.style.setProperty('--col', i % 2);
+      slot.dataset.row = row;
+      if (row >= nf) {
+        // a whole row still waiting for cartridges: drawn above the stack, never overlapping
+        slot.classList.add('future');
+        slot.style.setProperty('--nf', nf);
+        slot.style.setProperty('--has', nf ? 1 : 0);
+        slot.style.setProperty('--k', 3 - nf);
+        slot.style.setProperty('--e', row - nf);
+      }
+      slot.style.zIndex = String(c ? 10 - row : 1); // lower rows in front
+      const cart = el('div', 'cart');
+      const sel = !!c && c.convId === state.selected;
+      cart.innerHTML = cartridgeSVG(!c ? 'empty' : sel ? 'sel' : row);
+      slot.appendChild(cart);
       if (c) {
         slot.classList.add('filled');
-        if (c.convId === state.selected) slot.classList.add('sel');
+        if (sel) slot.classList.add('sel');
         slot.title = c.name;
+        slot.setAttribute('aria-label', c.name);
         slot.addEventListener('click', () => selectContributor(c.convId));
-        getPhotoUrl(c.photoPath).then(url => { if (url && token === sidebarToken) slot.appendChild(portraitImg(url)); });
+        // every cartridge shows its person, printed in dots on the label
+        const label = el('div', 'label');
+        cart.appendChild(label);
+        getPhotoUrl(c.photoPath).then(url => url && dotPhoto(url, { cols: 26, aspect: 1.054 })).then(src => {
+          if (src && token === sidebarToken) { const img = el('img'); img.alt = ''; img.src = src; label.appendChild(img); }
+        });
       }
       slots.appendChild(slot);
     }
@@ -1306,58 +1625,149 @@
     state.rows.forEach(r => { if (r.lab) r.lab.textContent = ownLabel(r.sender, r.source); });
   }
 
-  // A bot row with a source opens into a source block (visible / archive only).
+  // A bot row with a source can be SELECTED (visible / archive only): it opens into a
+  // source block with the card and ENTER ARCHIVE. One selected message per list.
+  // In your own chat the newest bot message is selected automatically; clicking another
+  // one selects it until you click a different one or a new bot message arrives.
   function wrapSource(rowEl, source) {
     const group = el('div', 'src-group');
+    group.source = source;
     group.appendChild(rowEl);
-    rowEl.addEventListener('click', () => {
-      if (!isVisible()) return;
-      selectContributor(source.convId);
-      toggleSource(group, source);
-    });
+    rowEl.addEventListener('click', () => { if (isVisible()) selectMessage(group); });
     return group;
   }
 
-  async function toggleSource(group, source) {
-    if (group.classList.contains('open')) {
-      group.classList.remove('open');
-      group.querySelectorAll('.src-head, .row.context').forEach(n => n.remove());
-      return;
-    }
-    group.classList.add('open');
+  function selectMessage(group, { animate = true } = {}) {
+    const list = group.parentElement;
+    if (list) list.querySelectorAll('.src-group.open, .src-group.opening').forEach(g => { if (g !== group) closeSource(g, { animate }); });
+    selectContributor(group.source.convId);
+    if (!group.classList.contains('open') && !group.classList.contains('opening')) openSource(group, { animate });
+    // remember the last message selected in this conversation (for the data window)
+    const inArch = group.closest('#list-archive') && state.path.length;
+    lastSelected.set(inArch ? state.path[state.path.length - 1].convId : state.conversationId, group.source);
+    scheduleData();
+  }
+  function unselectMessages(list) {
+    list.querySelectorAll('.src-group.open, .src-group.opening').forEach(g => closeSource(g, { animate: false }));
+  }
+  function selectNewestOwn() {
+    const groups = listOwn.querySelectorAll('.src-group');
+    if (groups.length) selectMessage(groups[groups.length - 1]);
+  }
+
+  // ---- the open / close animation ("smart transition") ----
+  // The frame grows out of the row's own outline: height, padding, border and background
+  // move together, then the receipt and context line fade down into place. Closing is the
+  // same in reverse. Data is fetched first so nothing jumps mid-animation.
+  const SRC_MS = 380, SRC_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+  const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function frameStyle(group) {
+    const cs = getComputedStyle(group);
+    return {
+      height: group.offsetHeight + 'px',
+      paddingTop: cs.paddingTop, paddingRight: cs.paddingRight, paddingBottom: cs.paddingBottom, paddingLeft: cs.paddingLeft,
+      borderColor: cs.borderTopColor, backgroundColor: cs.backgroundColor
+    };
+  }
+  // Animate the group between two frame styles, keeping the newest message in view.
+  function animateFrame(group, from, to, done) {
+    if (group.anim) group.anim.cancel();
+    const follow = group === listOwn.lastElementChild;
+    group.style.overflow = 'hidden';
+    const anim = group.animate([from, to], { duration: reduceMotion() ? 0 : SRC_MS, easing: SRC_EASE });
+    group.anim = anim;
+    if (follow) (function stick() { scrollOwn(); if (group.anim === anim && anim.playState === 'running') requestAnimationFrame(stick); })();
+    anim.onfinish = () => { group.style.overflow = ''; group.anim = null; if (follow) scrollOwn(); done && done(); };
+    anim.oncancel = () => { group.style.overflow = ''; };
+  }
+  function fadeParts(parts, dir) {
+    if (reduceMotion()) return;
+    const kf = [{ opacity: 0, transform: 'translateY(-0.4rem)' }, { opacity: 1, transform: 'none' }];
+    parts.forEach((n, i) => n.animate(dir === 'in' ? kf : kf.slice().reverse(),
+      { duration: dir === 'in' ? 300 : 180, delay: dir === 'in' ? 120 + i * 60 : 0, easing: SRC_EASE, fill: dir === 'in' ? 'backwards' : 'forwards' }));
+  }
+
+  function closeSource(group, { animate = true } = {}) {
+    group.selToken = (group.selToken || 0) + 1; // cancels an open that is still loading
+    group.classList.remove('opening');
+    if (!group.classList.contains('open')) return;
+    const parts = [...group.querySelectorAll('.src-head, .row.context')];
+    const finish = () => { group.classList.remove('open'); parts.forEach(n => n.remove()); };
+    if (!animate || reduceMotion()) { if (group.anim) group.anim.cancel(); finish(); return; }
+    const from = frameStyle(group);
+    finish();                       // measure the closed state...
+    const to = frameStyle(group);
+    group.classList.add('open');    // ...then put the parts back for the animation
+    parts.forEach((n, i) => i === 0 ? group.prepend(n) : parts[i - 1].after(n));
+    fadeParts(parts, 'out');
+    animateFrame(group, from, to, finish);
+    // during the animation the group shows the closed padding/colours from the keyframes
+  }
+
+  async function openSource(group, { animate = true } = {}) {
+    const source = group.source;
+    const token = group.selToken = (group.selToken || 0) + 1;
+    group.classList.add('opening');
+    const [info, ctx] = await Promise.all([getCard(source.convId, { name: source.name }), getContext(source.messageId)]);
+    if (group.selToken !== token) return; // unselected while loading
+    group.classList.remove('opening');
+
     const head = el('div', 'src-head');
-    const cardSlot = el('div');
     const enter = el('button', 'enter px', 'Enter archive ↗');
     enter.addEventListener('click', e => { e.stopPropagation(); enterArchive(source.convId, source.name, source.messageId); });
-    head.append(cardSlot, enter);
-    group.prepend(head);
-
-    const [info, ctx] = await Promise.all([getCard(source.convId, { name: source.name }), getContext(source.messageId)]);
-    if (!group.classList.contains('open')) return;
-    cardSlot.replaceChildren(cardEl(info, { showNumber: true }));
+    head.append(el('div', '', ''), enter);
+    head.firstChild.appendChild(cardEl(info, { showNumber: true, oneLine: true }));
+    const parts = [head];
+    let ctxRow = null;
     if (ctx) {
       // The line that prompted the reused reply. Never seen in this chat, so shown as raw data.
       const { row, msg } = makeRow('user', ctx.sender === 'bot' ? 'BOT' : source.name);
       row.classList.add('context');
       msg.textContent = ctx.content;
-      head.after(row);
+      ctxRow = row;
+      parts.push(row);
     }
+
+    const from = frameStyle(group);
+    group.prepend(...parts);
+    group.classList.add('open');
+    if (!animate || reduceMotion()) { if (group === listOwn.lastElementChild) scrollOwn(); return; }
+    const to = frameStyle(group);
+    fadeParts(parts, 'in');
+    animateFrame(group, from, to);
   }
 
   // ---------- sending ----------
   const listOwn = $('list-own');
   const scrollOwn = () => { listOwn.scrollTop = listOwn.scrollHeight; };
 
+  // Bot timing: a pause after your message finishes, then the row eases in,
+  // then a beat before it starts talking.
+  const BOT_PAUSE_MS = 700, BOT_SLIDE_MS = 420, BOT_BEAT_MS = 180;
+
   function appendOwnRow(sender, text, source, pitchFn) {
     const { row, lab, msg } = makeRow(sender, ownLabel(sender, source));
     state.rows.push({ sender, text, at: new Date(), source, lab });
     const node = source ? wrapSource(row, source) : row;
-    enqueueSpeech(() => {
+    enqueueSpeech(async () => {
+      if (sender === 'bot') {
+        await wait(BOT_PAUSE_MS);
+        node.classList.add('slide-in');
+        node.addEventListener('animationend', () => node.classList.remove('slide-in'), { once: true });
+      }
       listOwn.appendChild(node);
       scrollOwn();
       renderHeader();
       if (isVisible() && source) renderSidebar();
-      return typeOut(msg, text, pitchFn, scrollOwn);
+      if (sender === 'bot') await wait(BOT_SLIDE_MS + BOT_BEAT_MS);
+      await typeOut(msg, text, pitchFn, scrollOwn);
+      // In visible mode a new bot message becomes selected once it has been read out:
+      // its frame, receipt and ENTER ARCHIVE grow in then.
+      if (source && state.mode === 'visible' && !inArchive() && node === listOwn.lastElementChild) {
+        await wait(BOT_BEAT_MS);
+        if (state.mode === 'visible' && !inArchive()) selectMessage(node);
+      }
     });
   }
 
@@ -1390,6 +1800,7 @@
       conversation_id: state.conversationId, sender: 'bot', content: reply.response_text, source_message_id: reply.response_id
     });
     if (botErr) console.error(botErr);
+    scheduleData();
 
     const source = {
       convId: reply.source_conversation_id, name: reply.source_display_name, messageId: reply.response_id,
@@ -1406,14 +1817,442 @@
   }
 
   // ============================================================
+  // DATA WINDOW
+  // The conversations you have tracked through (your own, then each archive you entered),
+  // printed as raw data. In each one, the last message you selected shows a snapshot of
+  // the line it reused: the matched line, the similarity, and the predicted response.
+  // ============================================================
+  const lastSelected = new Map();   // conversation id -> source of the last selected bot message
+  const transcriptCache = new Map(); // other people's conversations don't change while you look
+  const snapshotCache = new Map();
+  const datawin = $('datawin');
+  let dataToken = 0;
+
+  // ---------- floating windows (DATA, MAP): movable, click to bring to front ----------
+  let zTop = 60;
+  function bringToFront(node) { node.style.zIndex = String(++zTop); }
+  $('window').addEventListener('pointerdown', () => bringToFront($('desktop')));
+
+  function floating(win, tabId, closeId, render, place) {
+    let timer = null, placed = false;
+    const api = {
+      toggle() {
+        win.hidden = !win.hidden;
+        if (win.hidden) return;
+        bringToFront(win); // a newly opened window comes to the front
+        if (!placed) { placed = true; place(win); }
+        api.keep();
+        render();
+      },
+      schedule() {
+        if (win.hidden) return;
+        clearTimeout(timer);
+        timer = setTimeout(render, 150);
+      },
+      // never let the window end up out of reach (after a resize, or when first placed)
+      keep() {
+        if (win.hidden) return;
+        const r = win.getBoundingClientRect();
+        win.style.left = Math.min(Math.max(16, r.left), Math.max(16, innerWidth - r.width - 16)) + 'px';
+        win.style.top = Math.min(Math.max(0, r.top), Math.max(0, innerHeight - 60)) + 'px';
+      }
+    };
+    $(closeId).addEventListener('click', () => { win.hidden = true; });
+    win.addEventListener('pointerdown', () => bringToFront(win));
+    addEventListener('resize', api.keep);
+    // drag by the tab
+    const tab = $(tabId);
+    let sx, sy, ox, oy, dragging = false;
+    tab.addEventListener('pointerdown', e => {
+      if (e.target.closest('button')) return;
+      dragging = true; tab.setPointerCapture(e.pointerId);
+      sx = e.clientX; sy = e.clientY; ox = win.offsetLeft; oy = win.offsetTop;
+    });
+    tab.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      win.style.left = Math.min(innerWidth - 80, Math.max(80 - win.offsetWidth, ox + e.clientX - sx)) + 'px';
+      win.style.top = Math.min(innerHeight - 40, Math.max(0, oy + e.clientY - sy)) + 'px';
+    });
+    const stop = () => { dragging = false; };
+    tab.addEventListener('pointerup', stop); tab.addEventListener('pointercancel', stop);
+    return api;
+  }
+
+  const dataWin = floating(datawin, 'dw-tab', 'dw-close', () => renderData(), w => {
+    w.style.left = Math.max(16, innerWidth - w.getBoundingClientRect().width - 24) + 'px'; w.style.top = '24px';
+  });
+  const toggleData = () => dataWin.toggle();
+  // anything that changes what the windows show calls this
+  function scheduleData() { dataWin.schedule(); mapWin.schedule(); }
+
+  async function fetchTranscript(convId, fresh) {
+    if (fresh || !transcriptCache.has(convId)) {
+      const p = supabaseClient.rpc('get_conversation_transcript', { target_conversation_id: convId })
+        .then(({ data, error }) => { if (error) { console.error(error); transcriptCache.delete(convId); return null; } return data || []; });
+      transcriptCache.set(convId, p);
+    }
+    return transcriptCache.get(convId);
+  }
+  // The reused line and the line before it, with ids and positions (supabase/data.sql).
+  // Without that function, falls back to the context line (no ids).
+  function getSnapshot(messageId) {
+    if (!snapshotCache.has(messageId)) {
+      snapshotCache.set(messageId, supabaseClient.rpc('get_message_snapshot', { target_message_id: messageId }).then(async ({ data, error }) => {
+        if (!error && data && data.length) return data.slice().sort((a, b) => a.id - b.id);
+        if (error) snapshotCache.delete(messageId);
+        const ctx = await getContext(messageId);
+        return ctx ? [{ id: null, sender: ctx.sender, content: ctx.content, position: null }] : [];
+      }));
+    }
+    return snapshotCache.get(messageId);
+  }
+
+  // Conversations that started between two moments (supabase/data.sql). null if unknown.
+  const gapCache = new Map();
+  function countBetween(a, b) {
+    if (!a || !b) return Promise.resolve(null);
+    const A = new Date(a).toISOString(), B = new Date(b).toISOString();
+    const key = A + '|' + B;
+    if (!gapCache.has(key)) gapCache.set(key, supabaseClient.rpc('count_conversations_between', { a: A, b: B })
+      .then(({ data, error }) => { if (error) { console.error(error); gapCache.delete(key); return null; } return data; }));
+    return gapCache.get(key);
+  }
+
+  // Trigram similarity, the same measure Postgres (pg_trgm) uses to pick a reply.
+  function trigrams(s) {
+    const set = new Set();
+    String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).forEach(w => {
+      const p = '  ' + w + ' ';
+      for (let i = 0; i < p.length - 2; i++) set.add(p.slice(i, i + 3));
+    });
+    return set;
+  }
+  function similarity(a, b) {
+    const A = trigrams(a), B = trigrams(b);
+    if (!A.size || !B.size) return 0;
+    let shared = 0; A.forEach(t => { if (B.has(t)) shared++; });
+    return shared / (A.size + B.size - shared);
+  }
+
+  const pad = n => String(n).padStart(2, '0');
+  const dDate = (d, short) => { d = new Date(d); return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + '/' + (short ? pad(d.getFullYear() % 100) : d.getFullYear()); };
+  const dTime = d => { d = new Date(d); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
+  const dDur = ms => fmtDuration(ms).replace(/ /g, '');
+  const SENDER = s => s === 'bot' ? 'BOT' : 'USER';
+
+  // Selecting a bot line in the data window: if that conversation is the one on screen,
+  // the message there is selected too (same as clicking it); otherwise only the data
+  // window's snapshot changes.
+  function pickFromData(convId, source) {
+    const viewing = inArchive() ? state.path[state.path.length - 1].convId : state.conversationId;
+    const list = convId === viewing ? (inArchive() ? $('list-archive') : listOwn) : null;
+    const group = list && [...list.querySelectorAll('.src-group')].reverse().find(g => g.source.messageId === source.messageId);
+    if (group) {
+      selectMessage(group);
+      group.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else {
+      lastSelected.set(convId, source);
+      scheduleData();
+    }
+  }
+
+  function dwLine(prefix, id, pos, sender, content, ref) {
+    const line = el('div', 'dw-line');
+    [prefix, id ?? '—', pos != null ? '[' + pos + ']' : '', SENDER(sender), content, ref ? '>' + ref : ''].forEach((t, i) => {
+      line.appendChild(el('span', i === 4 ? 'c' : i === 5 ? 'r' : '', String(t)));
+    });
+    return line;
+  }
+
+  async function renderData() {
+    if (datawin.hidden || !state.conversationId) return;
+    const token = ++dataToken;
+    const trail = [{ convId: state.conversationId, name: state.name }].concat(state.trail.slice(1));
+    const here = state.path.length; // which trail entry you are looking at now
+
+    // load everything first, then draw in one go
+    const boxes = await Promise.all(trail.map(async (t, i) => {
+      const own = i === 0;
+      const [rows, info] = await Promise.all([
+        fetchTranscript(t.convId, own),
+        own ? Object.assign(ownCardInfo(), { number: state.number }) : getCard(t.convId, { name: t.name })
+      ]);
+      const sel = lastSelected.get(t.convId);
+      let snap = null, snapInfo = null;
+      if (sel) [snap, snapInfo] = await Promise.all([getSnapshot(sel.messageId), getCard(sel.convId, { name: sel.name })]);
+      return { t, rows: rows || [], info: info || { name: t.name }, sel, snap, snapInfo };
+    }));
+    // newest conversation on top
+    const order = boxes.map((b, i) => ({ b, i })).sort((x, y) =>
+      (+new Date(y.b.info.startedAt || 0)) - (+new Date(x.b.info.startedAt || 0)) || x.i - y.i).map(o => o.b);
+    // how many other conversations started between each neighbouring pair
+    const gaps = await Promise.all(order.slice(1).map((b, k) => countBetween(order[k].info.startedAt, b.info.startedAt)));
+    if (token !== dataToken) return;
+
+    const body = $('dw-body');
+    const frag = document.createDocumentFragment();
+    // path: REBECCA --> JOY --> FRIEND (the one you are looking at is bright)
+    const path = el('div', 'dw-path');
+    trail.forEach((t, i) => {
+      if (i) path.appendChild(el('span', 'dw-dim', ' --> '));
+      path.appendChild(el('span', i === here ? '' : 'dw-dim', (t.name || '').toUpperCase()));
+    });
+    frag.append(path, el('div', 'dw-rule'));
+
+    order.forEach((b, i) => {
+      if (i) {
+        const n = gaps[i - 1];
+        frag.appendChild(el('div', 'dw-gap', '[ ... ' + (n == null ? '?' : n) + ' CONVERSATION' + (n === 1 ? '' : 'S') + ' ... ]'));
+      }
+      const box = el('div', 'dw-conv');
+      const info = b.info;
+      const head = ['#' + (info.number ?? '—'), '"' + (info.name || b.t.name || '').toLowerCase() + '"'];
+      if (info.startedAt) head.push(dDate(info.startedAt), dTime(info.startedAt), dDur((info.lastAt || info.startedAt) - info.startedAt));
+      box.appendChild(el('div', 'dw-head', head.join(' : ')));
+      const lines = el('div', 'dw-lines');
+      if (!b.rows.length) lines.appendChild(el('div', 'dw-note', 'no messages saved yet'));
+
+      // where the snapshot goes: after the line the selected reply was answering
+      let botAt = -1, userAt = -1;
+      if (b.sel) {
+        for (let k = b.rows.length - 1; k >= 0; k--) if (b.rows[k].sender === 'bot' && b.rows[k].source_message_id === b.sel.messageId) { botAt = k; break; }
+        for (let k = botAt - 1; k >= 0; k--) if (b.rows[k].sender === 'user') { userAt = k; break; }
+      }
+      b.rows.forEach((r, k) => {
+        const last = k === b.rows.length - 1;
+        const line = dwLine(last ? '└──' : '|──', r.id, k + 1, r.sender, r.content, r.sender === 'bot' ? r.source_message_id : null);
+        if (r.sender === 'bot' && r.source_message_id && r.source_conversation_id) {
+          line.classList.add('pick');
+          if (k === botAt) line.classList.add('sel');
+          line.title = 'Select this message';
+          const src = { convId: r.source_conversation_id, name: r.source_display_name, messageId: r.source_message_id, photoPath: r.source_photo_path, mood: r.source_mood };
+          line.addEventListener('click', () => pickFromData(b.t.convId, src));
+        }
+        lines.appendChild(line);
+        if (k === userAt && b.snap) {
+          const m2 = b.snap.find(x => x.id === b.sel.messageId) || b.snap[b.snap.length - 1];
+          const m1 = b.snap.length > 1 ? b.snap[0] : (b.snap[0] && b.snap[0].id !== b.sel.messageId ? b.snap[0] : null);
+          const pct = m1 ? Math.round(similarity(r.content, m1.content) * 100) : 0;
+          lines.appendChild(el('div', 'dw-match',
+            '|      └→ ' + (m1 ? (m1.id ?? '—') + ' ' + pct + '% SIMILARITY | ' : '') + 'PREDICTED RESPONSE : ' + b.sel.messageId));
+          const wrap = el('div', 'dw-snap');
+          const sbox = el('div', 'dw-conv');
+          const si = b.snapInfo || { name: b.sel.name };
+          const sh = ['#' + (si.number ?? '—'), '"' + (si.name || b.sel.name || '').toLowerCase() + '"'];
+          if (si.startedAt) sh.push(dDate(si.startedAt, true), dTime(si.startedAt));
+          sbox.appendChild(el('div', 'dw-head', sh.join(' : ') + ' [snapshot]'));
+          const sl = el('div', 'dw-lines');
+          const snapRows = m1 ? [m1, { id: b.sel.messageId, sender: 'user', content: m2 && m2.id === b.sel.messageId ? m2.content : (b.rows[botAt] || {}).content, position: m2 && m2.id === b.sel.messageId ? m2.position : null }] : [{ id: b.sel.messageId, sender: 'user', content: (b.rows[botAt] || {}).content, position: null }];
+          snapRows.forEach((x, j) => sl.appendChild(dwLine(j === snapRows.length - 1 ? '└──' : '|──', x.id, x.position, x.sender, x.content, null)));
+          sbox.appendChild(sl);
+          wrap.appendChild(sbox);
+          lines.appendChild(wrap);
+        }
+      });
+      box.appendChild(lines);
+      frag.appendChild(box);
+    });
+    body.replaceChildren(frag);
+  }
+
+  // ============================================================
+  // MAP WINDOW
+  // Every conversation you have opened (the trail) and every conversation whose words
+  // they used, on a timeline: newest at the top. The open conversation is the big square.
+  // The trail and the selected message's source ping in turn, down the line.
+  // ============================================================
+  const mapwin = $('mapwin');
+  const mapWin = floating(mapwin, 'mw-tab', 'mw-close', () => renderMap(), w => { w.style.left = '24px'; w.style.top = '24px'; });
+  const toggleMap = () => mapWin.toggle();
+  let mapToken = 0, pingTimer = null;
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const linkCount = new Map(); // conversation id -> how many conversations it used
+
+  async function countLinks(convId) {
+    if (!linkCount.has(convId)) linkCount.set(convId, fetchTranscript(convId).then(rows =>
+      new Set((rows || []).map(r => r.source_conversation_id).filter(Boolean)).size));
+    return linkCount.get(convId);
+  }
+
+  async function renderMap() {
+    if (mapwin.hidden || !state.conversationId) return;
+    const token = ++mapToken;
+    const trail = [{ convId: state.conversationId, name: state.name }].concat(state.trail.slice(1));
+    const currentId = trail[Math.min(state.path.length, trail.length - 1)].convId;
+    const sel = lastSelected.get(currentId);
+
+    // nodes and edges: each opened conversation -> every conversation it used
+    const nodes = new Map(), edges = new Map();
+    const addNode = (id, name) => { if (id && !nodes.has(id)) nodes.set(id, { id, name }); return nodes.get(id); };
+    trail.forEach(t => addNode(t.convId, t.name).opened = true);
+    const transcripts = await Promise.all(trail.map((t, i) => fetchTranscript(t.convId, i === 0)));
+    trail.forEach((t, i) => (transcripts[i] || []).forEach(r => {
+      if (!r.source_conversation_id || r.source_conversation_id === t.convId) return;
+      addNode(r.source_conversation_id, r.source_display_name);
+      edges.set(t.convId + '>' + r.source_conversation_id, { from: t.convId, to: r.source_conversation_id });
+    }));
+    if (sel) { addNode(sel.convId, sel.name); edges.set(currentId + '>' + sel.convId, { from: currentId, to: sel.convId }); }
+
+    // details for every node (cards are cached)
+    await Promise.all([...nodes.values()].map(async n => {
+      if (n.id === state.conversationId) {
+        Object.assign(n, ownCardInfo(), { number: state.number, name: state.name, photoUrl: state.photoUrl });
+      } else {
+        const c = await getCard(n.id, { name: n.name });
+        if (c) Object.assign(n, c, { name: c.name || n.name });
+        n.photoUrl = n.photoPath ? await getPhotoUrl(n.photoPath) : null;
+      }
+      if (!n.opened) n.links = await countLinks(n.id);
+      n.dots = n.photoUrl ? await dotPhoto(n.photoUrl, { cols: 22, aspect: 1 }) : null;
+    }));
+    // the info box: how the selected reply was chosen
+    let info = null;
+    if (sel) {
+      const rows = transcripts[trail.findIndex(t => t.convId === currentId)] || [];
+      let b = -1; for (let k = rows.length - 1; k >= 0; k--) if (rows[k].sender === 'bot' && rows[k].source_message_id === sel.messageId) { b = k; break; }
+      let u = -1; for (let k = b - 1; k >= 0; k--) if (rows[k].sender === 'user') { u = k; break; }
+      const snap = await getSnapshot(sel.messageId);
+      const m1 = snap.length > 1 ? snap[0] : (snap[0] && snap[0].id !== sel.messageId ? snap[0] : null);
+      if (u >= 0 && m1) info = { pct: Math.round(similarity(rows[u].content, m1.content) * 100), mine: rows[u].content, theirs: m1.content };
+    }
+    if (token !== mapToken) return;
+
+    // ---- layout: one row per conversation, newest first
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const body = $('mw-body');
+    const W = body.clientWidth;
+    const list = [...nodes.values()].sort((a, b) => (+new Date(b.startedAt || 0)) - (+new Date(a.startedAt || 0)));
+    // Squish the timeline so every conversation fits in the window's height. Rows are in
+    // order (newest first), spaced evenly; neighbours sit in different columns, so they can
+    // share height without overlapping. Scrolls only if there are very many.
+    const sameDay = list.length > 0 && list.every(n => n.startedAt && new Date(n.startedAt).toDateString() === new Date(list[0].startedAt).toDateString());
+    const sizeOf = n => (n.id === currentId ? 3.8 : 2.4) * rem;
+    const heightOf = n => sizeOf(n) + (n.opened ? 1.9 : n.links ? 2.3 : 1.5) * rem; // square + label (+ pips)
+    const first = list[0];
+    const TOP = (first && first.id === currentId ? 4.6 : 3.2) * rem;   // room for the date (and a label above)
+    const avail = $('mw-body').clientHeight - 0.6 * rem;
+    const lastH = list.length ? heightOf(list[list.length - 1]) : 0;
+    const rowStep = list.length > 1 ? Math.max(1.6 * rem, (avail - TOP - lastH) / (list.length - 1)) : 0;
+    const x0 = 5 * rem, x1 = W - 4.5 * rem;
+    const lanes = [0.1, 0.7, 0.3, 0.9, 0.0, 0.5];
+    let lane = 0;
+    list.forEach((n, i) => {
+      n.current = n.id === currentId;
+      n.size = sizeOf(n);
+      n.y = TOP + i * rowStep;
+      n.x = n.current ? x0 + (x1 - x0) * 0.33 : x0 + (x1 - x0) * lanes[lane++ % lanes.length];
+      n.cx = n.x + n.size / 2; n.cy = n.y + n.size / 2;
+    });
+    const H = Math.max(avail, (list.length ? list[list.length - 1].y + lastH : 0) + 0.6 * rem);
+
+    const map = el('div', 'mw-map');
+    map.style.height = H + 'px';
+    map.appendChild(el('div', 'mw-axis'));
+    const dateLabel = (d, withYear) => (withYear ? d.getFullYear() + '\n\n' : '') + (d.getMonth() + 1) + '/' + d.getDate();
+    if (sameDay) {
+      // all on one day: the date once at the top, then a time stamp for each conversation
+      const d = new Date(first.startedAt);
+      const g = el('div', 'mw-grid'); g.style.top = (TOP - 1.2 * rem) + 'px'; map.appendChild(g);
+      const t = el('div', 'mw-date', dateLabel(d, true)); t.style.top = (TOP - 1.2 * rem) + 'px'; map.appendChild(t);
+      list.forEach(n => {
+        const at = new Date(n.startedAt);
+        const tick = el('div', 'mw-tick'); tick.style.top = n.cy + 'px'; map.appendChild(tick);
+        const tm = el('div', 'mw-time', pad(at.getHours()) + ':' + pad(at.getMinutes())); tm.style.top = n.cy + 'px'; map.appendChild(tm);
+      });
+    } else {
+      // dashed lines where the day changes, the year above the first
+      let lastDay = null, lastYear = null;
+      list.forEach(n => {
+        if (!n.startedAt) return;
+        const d = new Date(n.startedAt), day = d.toDateString();
+        if (day === lastDay) return;
+        const gy = n.y - (n.current ? 1.9 : 0.6) * rem;
+        const g = el('div', 'mw-grid'); g.style.top = gy + 'px'; map.appendChild(g);
+        const t = el('div', 'mw-date', dateLabel(d, d.getFullYear() !== lastYear)); t.style.top = gy + 'px'; map.appendChild(t);
+        lastDay = day; lastYear = d.getFullYear();
+      });
+    }
+    // lines between conversations
+    const svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('class', 'mw-edges'); svg.setAttribute('width', W); svg.setAttribute('height', H);
+    edges.forEach(e => {
+      const a = nodes.get(e.from), b = nodes.get(e.to);
+      if (!a || !b || a.x == null || b.x == null) return;
+      const chosen = sel && e.from === currentId && e.to === sel.convId;
+      const line = document.createElementNS(SVGNS, 'line');
+      line.setAttribute('x1', a.cx); line.setAttribute('y1', a.cy); line.setAttribute('x2', b.cx); line.setAttribute('y2', b.cy);
+      line.setAttribute('stroke', '#ececec'); line.setAttribute('stroke-width', chosen ? 2.6 : 1);
+      if (b.isSeed) line.setAttribute('stroke-dasharray', '5 4'); // seed conversations: dashed
+      svg.appendChild(line);
+      if (chosen) { // the chosen link gets a small square halfway
+        const m = document.createElementNS(SVGNS, 'rect'), s = 0.75 * rem;
+        m.setAttribute('x', (a.cx + b.cx) / 2 - s / 2); m.setAttribute('y', (a.cy + b.cy) / 2 - s / 2);
+        m.setAttribute('width', s); m.setAttribute('height', s);
+        m.setAttribute('fill', '#000'); m.setAttribute('stroke', '#fff'); m.setAttribute('stroke-width', 2);
+        svg.appendChild(m);
+      }
+    });
+    map.appendChild(svg);
+    // the conversations
+    list.forEach(n => {
+      const node = el('div', 'mw-node' + (n.opened ? ' opened' : '') + (n.current ? ' current' : ''));
+      node.style.left = n.x + 'px'; node.style.top = n.y + 'px';
+      node.title = n.name || '';
+      const sq = el('div', 'sq');
+      if (n.dots) { const img = el('img'); img.alt = ''; img.src = n.dots; sq.appendChild(img); }
+      if (n.current) sq.insertAdjacentHTML('beforeend', '<svg class="brackets" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke="#000" stroke-width="2.4" vector-effect="non-scaling-stroke"><path d="M0 18V0H18M82 0H100V18M100 82V100H82M18 100H0V82" vector-effect="non-scaling-stroke"/></svg>');
+      sq.appendChild(el('div', 'ring'));
+      node.appendChild(sq);
+      node.appendChild(el('div', 'mw-label', '#' + (n.number ?? '—') + '  ' + (n.name || '').toUpperCase()));
+      if (!n.opened && n.links != null) { // how many conversations this one would lead to
+        const pips = el('div', 'mw-pips');
+        for (let k = 0; k < Math.min(n.links, 8); k++) pips.appendChild(el('i'));
+        if (n.links > 8) pips.appendChild(el('span', '', '+' + (n.links - 8)));
+        node.appendChild(pips);
+      }
+      n.el = node;
+      map.appendChild(node);
+    });
+    body.replaceChildren(map);
+
+    // info box
+    const box = $('mw-info');
+    box.hidden = !info;
+    if (info) {
+      const cur = nodes.get(currentId), src = nodes.get(sel.convId);
+      box.textContent = info.pct + '% CONFIDENCE\n#' + (cur.number ?? '—') + '\n' + info.mine + '\n#' + (src.number ?? '—') + '\n' + info.theirs;
+    }
+
+    // the chain pings in turn: trail first to last, then the selected source; then a pause
+    const chain = trail.map(t => nodes.get(t.convId));
+    if (sel && !trail.some(t => t.convId === sel.convId)) chain.push(nodes.get(sel.convId));
+    clearInterval(pingTimer);
+    let step = 0;
+    pingTimer = setInterval(() => {
+      if (mapwin.hidden || token !== mapToken) { clearInterval(pingTimer); return; }
+      const n = chain[step % (chain.length + 1)]; // one empty beat at the end of each cycle
+      if (n && n.el) { n.el.classList.remove('ping'); void n.el.offsetWidth; n.el.classList.add('ping'); }
+      step++;
+    }, 650);
+
+    // first open: scroll to the current conversation
+    if (!body.dataset.scrolled) { body.dataset.scrolled = '1'; const c = nodes.get(currentId); body.scrollTop = Math.max(0, c.y - 4 * rem); }
+  }
+
+  // ============================================================
   // ARCHIVE
   // ============================================================
   async function enterArchive(convId, name, highlightId) {
+    // the trail remembers how far you have tracked, even after you step back
+    const pos = state.path.length + 1;
+    if (!state.trail.length) state.trail = [{ convId: state.conversationId, name: state.name }];
+    if (!state.trail[pos] || state.trail[pos].convId !== convId) state.trail = state.trail.slice(0, pos).concat([{ convId, name }]);
     state.path.push({ convId, name, highlightId });
     await renderArchive();
   }
   async function leaveArchive(level) {
     state.path = state.path.slice(0, level);
+    state.trail = state.trail.slice(0, level + 1); // closed levels leave the data window too
     if (!level) { state.mode = 'visible'; renderChrome(); return; }
     await renderArchive();
   }
