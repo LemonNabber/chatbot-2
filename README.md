@@ -61,11 +61,27 @@ Messages type out one letter at a time with an Animal Crossing–style babble. E
 
 You can tune the sound with the constants at the top of the script: `DEFAULT_VOICE_PITCH`, `VOICE_PITCH_MULTIPLIER` (raise it for a squeakier voice) and `RECORD_SECONDS`.
 
+## Pixel look
+
+[pixel-filter.js](pixel-filter.js) gives the whole page a pixel-art look using SVG filters. No assets are redrawn. Each element marked `.px` (interface) or `.px-img` (photos, video) is filtered on its own:
+
+- **Pixel grid:** each block takes one colour, with no blur.
+- **Interface pieces:** every colour snaps to colours that element actually uses, so designed colours stay exact, nested boxes never merge, and outlines are pure black. Each run of text is its own layer, so its edges snap to the text colour.
+- **Photos:** solid colour bands, with a dithered strip where one band meets the next.
+
+Settings are at the top of `pixel-filter.js`: `block` (1px), `levels` (8 bands), `width` (25% dithered strip) and `ink` (40% text weight). [pixel-test.html](pixel-test.html) has sliders for trying settings out.
+
+**Not used in Safari or WebKit** (every iPhone browser uses WebKit). Safari draws these filters wrongly: blank or striped boxes, and sometimes a blank page. Safari visitors get the normal page, and the "Pixel" checkbox is hidden for them. Add `?force-pixel` to the URL to try it in Safari anyway.
+
+Notes for editing the page:
+- A colour shown only on hover goes in `data-px-extra="#ddd"`, or it snaps to the nearest colour the element already uses.
+- The filter clips anything drawn outside an element, so use borders instead of outlines or shadows.
+
 ---
 
 ## Stack
 
-- **Frontend:** one static HTML file (vanilla JS, no build step), with `supabase-js` loaded from a CDN
+- **Frontend:** a static HTML page plus `pixel-filter.js` (vanilla JS, no build step), with `supabase-js` loaded from a CDN
 - **Backend:** Supabase (Postgres, plus Storage for the photos)
 
 ## Setup
@@ -79,6 +95,10 @@ In a new Supabase project's **SQL Editor**, run the following in this order:
 3. **Updated functions:** drop and recreate `find_best_response` and `get_conversation_transcript` so they return `source_photo_path`.
 4. **Latest `find_best_response`:** the version with the bot-said tie-breaker.
 5. **Voice:** [supabase/voice.sql](supabase/voice.sql) adds `voice_pitch` and makes `find_best_response` return `source_voice_pitch`.
+6. **Mood:** [supabase/mood.sql](supabase/mood.sql) adds `mood` (the kaomoji picked in setup) and makes `find_best_response` and `get_conversation_transcript` return `source_mood`. Run it after `voice.sql`.
+7. **UI:** [supabase/ui.sql](supabase/ui.sql) adds the conversation `number` shown on user cards, plus `get_conversation_card` (name, mood, duration, message count) and `get_message_context` (the line before a reused reply). Run it after `mood.sql`.
+
+The interface follows the requirements doc (fonts, sizes, modes, user card). OT Bulb Monoline is not free: put its file at `fonts/OTBulbMonoline-Regular.woff2`. Until then, the page falls back to a system monospace font.
 
 ### 2. Storage
 
@@ -126,7 +146,7 @@ In a new Supabase project's **SQL Editor**, run the following in this order:
 ## Data model
 
 **`conversations`**: one row per chat session
-- `id` (uuid), `display_name`, `photo_path` (file in the `conversation-photos` bucket), `voice_pitch` (Hz, 60–600, null for seeds), `started_at`, `last_active_at`, `extra_info` (jsonb, unused), `is_seed`
+- `id` (uuid), `display_name`, `photo_path` (file in the `conversation-photos` bucket), `voice_pitch` (Hz, 60–600, null for seeds), `mood` (kaomoji, up to 40 characters, null for seeds), `started_at`, `last_active_at`, `extra_info` (jsonb, unused), `is_seed`
 
 **`messages`**: every line, from either side
 - `conversation_id`, `sender` (`'user'` or `'bot'`), `content`, `created_at`

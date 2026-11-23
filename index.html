@@ -3,397 +3,976 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chatbot</title>
+<title>FriendBot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Balsamiq+Sans:wght@400;700&family=Cossette+Texte&family=Noto+Sans+JP&family=Noto+Sans+Symbols+2&display=block" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; }
+  /* ============================================================
+     FONTS (see the requirements doc: "Fonts", "Which font where")
+     Interface = Cossette Texte · The friend = Balsamiq Sans · Data = OT Bulb Monoline
+     OT Bulb Monoline is commercial: put its file at fonts/OTBulbMonoline-Regular.woff2.
+     ============================================================ */
+  @font-face {
+    font-family: 'OT Bulb Monoline';
+    src: url('fonts/OTBulbMonoline-Regular.woff2') format('woff2'),
+         url('fonts/OTBulbMonoline-Regular.otf') format('opentype');
+    font-display: block;
+  }
+
+  :root {
+    --kaomoji: 'Noto Sans JP', 'Noto Sans Symbols 2', sans-serif;
+    --f-ui: 'Cossette Texte', 'Arial Narrow', var(--kaomoji);
+    --f-friend: 'Balsamiq Sans', 'Comic Neue', var(--kaomoji);
+    --f-data: 'OT Bulb Monoline', ui-monospace, monospace, var(--kaomoji);
+
+    /* type scale ("Type scale and sizing") */
+    --text-display: 4.5rem;
+    --text-xl: 1.375rem;
+    --text-lg: 1.125rem;
+    --text-md: 1rem;
+    --text-sm: 0.875rem;
+    --text-xs: 0.75rem;
+
+    /* colour ("Modes and colour") */
+    --ink: #050708;
+    --paper: #ffffff;
+    --chrome: #f2f2f2;
+    --line: #a8a8a8;
+    --muted: #9a9a9a;
+    --tint: #dfe6e4;
+    --sidebar: #0b0b0b;
+  }
+
+  /* Root size follows the screen so the window scales as one object. */
+  html { font-size: clamp(14px, min(1.25vw, 1.9vh), 24px); }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: Georgia, 'Times New Roman', serif;
-    background: #fdfdfb;
-    color: #222;
-    max-width: 600px;
-    margin: 40px auto;
-    padding: 0 16px;
+    background: #2d5bd6;
+    color: var(--ink);
+    font-family: var(--f-ui);
+    overflow: hidden;
+    height: 100vh;
   }
-  h1 { font-size: 1.4rem; margin-bottom: 4px; }
-  #name-screen input, #chat-screen input[type="text"], #message-input {
-    font-family: inherit;
-    font-size: 1rem;
-    padding: 8px;
-    width: 100%;
-    border: 1px solid #999;
-    margin-top: 8px;
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  input { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  /* type roles */
+  .f-ui { font-family: var(--f-ui); letter-spacing: 0.02em; }
+  .f-friend { font-family: var(--f-friend); }
+  .f-data { font-family: var(--f-data); }
+
+  /* ============================================================
+     DESKTOP
+     ============================================================ */
+  #sky {
+    position: fixed; inset: 0; width: 100vw; height: 100vh;
+    display: block; will-change: transform;
   }
-  button {
-    font-family: inherit;
-    font-size: 1rem;
-    padding: 8px 14px;
-    margin-top: 8px;
-    border: 1px solid #333;
-    background: #eee;
-    cursor: pointer;
+  #scanlines {
+    position: fixed; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(0, 10, 40, 0.15) 0 1px, transparent 1px 3px);
   }
-  button:hover { background: #ddd; }
-  button:disabled { opacity: 0.5; cursor: default; }
-  #messages {
-    border: 1px solid #999;
-    height: 400px;
+  #desktop {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding-bottom: 3.5rem;
+  }
+
+  /* ============================================================
+     WINDOW
+     ============================================================ */
+  .window {
+    position: relative;
+    background: var(--chrome);
+    border: 2px solid #000;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .window.w-setup { width: 57rem; height: 38rem; }
+  .window.w-chat { width: 74rem; height: 47rem; }
+
+  .titlebar {
+    height: 2.25rem; flex: none;
+    background: var(--ink); color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 1rem;
+  }
+  .title {
+    font-family: var(--f-data);
+    font-size: var(--text-md);
+    text-transform: uppercase;
+    display: flex; gap: 0.5em; white-space: nowrap;
+  }
+  .title button { text-transform: uppercase; }
+  .title button:hover { text-decoration: underline; }
+  .eye { width: 1.8rem; height: 1.2rem; color: #fff; display: flex; }
+  .eye svg { width: 100%; height: 100%; }
+
+  .window-body {
+    flex: 1; min-height: 0;
+    display: flex; gap: 0.6rem;
+    padding: 1rem;
+  }
+  .panel {
+    position: relative; flex: 1; min-width: 0;
+    background: var(--paper);
+    border: 2px solid var(--line);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  /* The glow is one opaque layer under everything in the panel (a fading transparent
+     edge would be cut hard by the pixel filter). */
+  .glow {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(38% 34% at 30% 34%, rgba(238, 242, 255, 0.95), rgba(238, 242, 255, 0) 70%),
+      radial-gradient(34% 32% at 50% 28%, rgba(255, 244, 220, 0.95), rgba(255, 244, 220, 0) 70%),
+      radial-gradient(34% 34% at 70% 36%, rgba(255, 236, 239, 0.95), rgba(255, 236, 239, 0) 70%),
+      var(--paper);
+  }
+
+  /* ============================================================
+     SHARED COMPONENTS
+     ============================================================ */
+  .headline {
+    font-family: var(--f-friend); font-weight: 700;
+    font-size: var(--text-display); line-height: 1.05; letter-spacing: -0.01em;
+    text-align: center;
+  }
+  .lead {
+    font-family: var(--f-friend);
+    font-size: var(--text-xl); line-height: 1.35;
+    text-align: center;
+  }
+  .step-title {
+    font-family: var(--f-ui); letter-spacing: 0.02em;
+    font-size: var(--text-lg); line-height: 1.2;
+    text-transform: uppercase; text-align: center; font-weight: 400;
+  }
+  .btn {
+    font-family: var(--f-ui); letter-spacing: 0.02em;
+    font-size: var(--text-lg); line-height: 1.2; text-transform: uppercase;
+    min-width: 8rem; padding: 0.55rem 1.4rem;
+    background: #ececec;
+    border: 2px solid var(--line);
+    border-radius: 0.3rem;
+  }
+  .btn:hover { background: #dddddd; }
+  .btn:disabled { color: var(--muted); cursor: default; background: #f4f4f4; }
+  .actions {
+    position: absolute; left: 0; right: 0; bottom: 1.5rem;
+    display: flex; justify-content: center; gap: 1rem;
+  }
+
+  /* The user card ("The user card") */
+  .card {
+    display: inline-flex; flex-direction: column;
+    font-family: var(--f-ui); letter-spacing: 0.02em;
+    font-size: var(--text-sm); line-height: 1.2; text-transform: uppercase;
+    border: 1px solid currentColor;
+    background: var(--paper); color: var(--ink);
+    white-space: nowrap;
+  }
+  .card-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.15rem 0.4rem; }
+  .card-row + .card-row { border-top: 1px solid currentColor; justify-content: flex-end; }
+  .card-row > span { display: flex; align-items: center; gap: 0.2rem; }
+  .card .c-mood { text-transform: none; }
+  .card .c-dur { margin-left: auto; }
+  .card svg { width: 1em; height: 1em; flex: none; }
+
+  .portrait {
+    width: 11.5rem; height: 11.5rem; flex: none;
+    border: 2px solid var(--line); border-radius: 0.5rem;
+    background: var(--tint);
+    overflow: hidden;
+  }
+  .portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .portrait.bot-hidden { background: #000; border: 3px solid #000; box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 5px #000; }
+
+  .photo-grey { filter: grayscale(1); } /* used when the pixel filter is off (e.g. Safari) */
+
+  /* ============================================================
+     SETUP (FRIEND.BEGIN)
+     ============================================================ */
+  #setup, #chat { position: absolute; inset: 0; }
+  .step { position: absolute; inset: 0; padding: 2rem 5rem; }
+  .step-welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4rem; padding-bottom: 7rem; }
+  .step-welcome .lead { max-width: 30rem; }
+  .step-voice, .step-selfie, .step-mood, .step-name { display: flex; flex-direction: column; align-items: center; }
+  .step .step-title { margin-top: 1.2rem; }
+
+  .rail {
+    position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 0.55rem;
+    padding: 0.6rem 0.35rem;
+    background: var(--paper);
+    border: 2px solid #c8c8c8; border-radius: 1.2rem;
+    color: #b5b5b5;
+  }
+  .rail .r-item { width: 1.4rem; height: 1.4rem; display: flex; align-items: center; justify-content: center; }
+  .rail .r-item svg { width: 100%; height: 100%; }
+  .rail .r-abc { font-family: var(--f-ui); font-size: var(--text-xs); letter-spacing: 0.02em; }
+  .rail .r-item.active { color: #000; }
+
+  /* voice */
+  .device {
+    margin-top: 1.4rem;
+    width: 44rem; height: 24.5rem;
+    border: 2px solid #c8c8c8; border-radius: 0.35rem;
+    background: var(--paper);
+    position: relative;
+  }
+  .graph {
+    position: absolute; left: 1rem; right: 1rem; top: 0.8rem; height: 17.5rem;
+    background: var(--tint);
+    border: 2px solid #b9bfbd; border-radius: 0.3rem;
+  }
+  .graph canvas { position: absolute; left: 0; top: 0; width: 100%; height: 12.5rem; display: block; }
+  .ticks {
+    position: absolute; left: 0; right: 0; top: 12.5rem; bottom: 0;
+    border-top: 1px solid #000;
+    font-family: var(--f-ui); font-size: var(--text-xs); letter-spacing: 0.02em;
+  }
+  .tick { position: absolute; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); }
+  .tick::before, .tick::after { content: ""; width: 1px; flex: 1; background: #000; }
+  .tick span { padding: 0.15rem 0; }
+  .device-foot { position: absolute; left: 1rem; right: 1rem; bottom: 1rem; height: 3rem; display: flex; align-items: center; justify-content: center; }
+  .meter { position: absolute; left: 0; bottom: 0.2rem; width: 10rem; display: flex; flex-direction: column; gap: 3px; }
+  .meter i { display: block; height: 2px; background: #c4c4c4; width: 100%; transition: width 80ms linear; }
+  .meter i.on { background: #555; }
+  .pitch-read { position: absolute; left: 11rem; bottom: 0.1rem; font-family: var(--f-ui); font-size: var(--text-xs); letter-spacing: 0.02em; text-transform: uppercase; color: #555; }
+  .rec {
+    width: 3.1rem; height: 2.4rem;
+    background: #ececec; border: 2px solid var(--line); border-radius: 0.35rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rec:hover { background: #dddddd; }
+  .rec i { display: block; width: 1rem; height: 1rem; background: #444; border-radius: 50%; }
+  .rec.recording i { border-radius: 0.1rem; }
+  .setup-error { font-family: var(--f-ui); font-size: var(--text-sm); letter-spacing: 0.02em; text-transform: uppercase; margin-top: 0.8rem; text-align: center; max-width: 40rem; }
+
+  /* selfie */
+  .camera-wrap { position: relative; margin-top: 3rem; }
+  .shutter {
+    position: absolute; left: 1.4rem; top: -0.55rem; width: 7rem; height: 0.55rem;
+    background: #000; border-radius: 0.2rem 0.2rem 0 0;
+  }
+  .shutter-mark { position: absolute; left: 4.3rem; top: -2rem; width: 0; height: 0; border-left: 0.6rem solid transparent; border-right: 0.6rem solid transparent; border-top: 0.6rem solid #000; }
+  .camera {
+    width: 34rem; height: 19.5rem;
+    border: 2px solid #9a9a9a; border-radius: 0.4rem;
+    background: var(--paper);
+    position: relative;
+  }
+  .viewfinder { position: absolute; left: 1.2rem; top: 1.1rem; width: 6rem; height: 2.2rem; border: 2px solid #9a9a9a; border-radius: 0.2rem; }
+  .viewfinder::after { content: ""; position: absolute; left: 1.2rem; right: 1.2rem; top: 0; bottom: 0; background: #e2e2e2; border-left: 2px solid #9a9a9a; border-right: 2px solid #9a9a9a; }
+  .lens-outer {
+    position: absolute; right: 2.5rem; top: 1.6rem;
+    width: 16rem; height: 16rem; border-radius: 50%;
+    border: 2px solid #9a9a9a; background: #ececec;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .lens-ring { width: 13.8rem; height: 13.8rem; border-radius: 50%; border: 2px solid #9a9a9a; display: flex; align-items: center; justify-content: center; }
+  .lens {
+    width: 11rem; height: 11rem; border-radius: 50%;
+    border: 2px solid #9a9a9a; overflow: hidden; background: #ececec;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .lens video, .lens img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+  .lens .no-photo { width: 6rem; height: 3.6rem; border: 2px solid #9a9a9a; border-radius: 0.4rem; background: linear-gradient(to top right, transparent calc(50% - 1px), #9a9a9a 50%, transparent calc(50% + 1px)); }
+
+  /* mood */
+  .kao-grid {
+    margin-top: 1rem;
+    width: 46rem; height: 22rem;
+    border: 2px solid #c8c8c8; border-radius: 0.3rem;
+    background: var(--paper);
     overflow-y: auto;
-    padding: 10px;
-    margin-top: 16px;
-    background: #fff;
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    align-content: start;
+    font-family: var(--f-ui); font-size: var(--text-lg); letter-spacing: 0.02em;
   }
-  .message { margin-bottom: 10px; line-height: 1.4; }
-  .user-line {
-    background: #eee;
-    padding: 6px 8px;
-    border-radius: 3px;
+  .kao {
+    height: 3rem; padding: 0 0.3rem;
+    border-right: 1px solid #e2e2e2; border-bottom: 1px solid #e2e2e2;
+    white-space: nowrap; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
   }
-  .who { font-weight: bold; }
-  .source {
-    font-size: 0.8rem;
-    color: #777;
-    font-style: italic;
+  .kao:hover { background: #f2f2f2; }
+  .kao.selected { background: #dddddd; }
+
+  /* name */
+  .step-name { justify-content: center; padding-bottom: 6rem; }
+  .name-input {
+    width: 41rem; height: 2.8rem;
+    border: 2px solid #9a9a9a; border-radius: 0.35rem;
+    background: var(--paper);
+    font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-lg);
+    text-align: center; outline: none;
   }
-  #input-row { display: flex; gap: 8px; margin-top: 10px; }
-  #input-row input { flex: 1; }
-  .clickable { cursor: default; }
-  body.show-sources .clickable { cursor: pointer; }
-  body.show-sources .clickable:hover { background: #f3f3ee; }
-  .source { display: none; }
-  body.show-sources .source { display: inline; }
-  #mode-toggle-row {
-    margin-top: 16px;
-    font-size: 0.9rem;
-    color: #555;
+  .name-input::placeholder { color: var(--ink); text-transform: uppercase; }
+  .name-input:focus::placeholder { color: var(--muted); }
+  .name-input:focus { border-color: #000; }
+
+  /* status terminal */
+  .status {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 28.5rem; padding: 1rem 1.6rem 1.4rem;
+    background: #000; color: #fff; border-radius: 0.4rem;
+    z-index: 5;
+  }
+  .status .face { width: 3rem; height: 2.4rem; color: #fff; }
+  .term {
+    font-family: var(--f-data); font-size: var(--text-md); line-height: 1.2;
+    white-space: pre-wrap; margin-top: 1rem; min-height: 9.6em;
+  }
+  .progress { margin-top: 1.6rem; height: 2rem; border: 2px solid #fff; }
+  .progress i { display: block; height: 100%; width: 0; background: #666; transition: width 400ms ease; }
+  .status .btn { margin-top: 1rem; }
+
+  /* ============================================================
+     CHAT (FRIEND.START / FRIEND.VISIBLE / ARCHIVE)
+     ============================================================ */
+  .chat-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .chat-empty .headline { max-width: 26rem; margin-bottom: 4rem; }
+  .start-input {
+    position: absolute; left: 1.3rem; right: 0.8rem; bottom: 1.1rem;
+    border: none; border-bottom: 1px solid #000;
+    background: transparent; outline: none;
+    font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-lg);
+    padding: 0.2rem 0;
+  }
+  .start-input::placeholder { color: var(--ink); text-transform: uppercase; }
+  .start-input:focus::placeholder { color: var(--muted); }
+
+  .chat-main { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 0.8rem 0.6rem 0.4rem; }
+  .chat-head {
+    flex: none; height: 19.5rem;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: start;
+    padding-top: 7rem;
+  }
+  .chat-head .portrait { justify-self: center; }
+  .head-card { justify-self: center; }
+  .visible .chat-head { padding-top: 2.4rem; height: 14.8rem; }
+
+  .list-frame {
+    flex: 1; min-height: 0;
+    border: 2px solid #c8c8c8; border-radius: 0.3rem;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 0.4rem 0 0.4rem 0.4rem;
     display: flex;
-    gap: 16px;
   }
-  #modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.4);
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
+  .list {
+    flex: 1; overflow-y: scroll;
+    display: flex; flex-direction: column; gap: 0.5rem;
+    padding-right: 0.5rem;
+    scrollbar-width: thin; scrollbar-color: var(--line) var(--chrome);
   }
-  #modal-box {
-    background: #fff;
-    border: 1px solid #333;
-    max-width: 500px;
-    width: 90%;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
+  .list::-webkit-scrollbar { width: 0.8rem; }
+  .list::-webkit-scrollbar-track { background: var(--chrome); border: 1px solid #c8c8c8; }
+  .list::-webkit-scrollbar-thumb {
+    border: 1px solid var(--line);
+    background: repeating-linear-gradient(to bottom, #fff 0 2px, var(--line) 2px 3px);
   }
-  #modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #999;
+
+  .row {
+    flex: none;
+    display: flex; align-items: baseline; gap: 2rem;
+    min-height: 2.5rem; padding: 0.5rem 1.1rem;
+    border: 2px solid var(--line); border-radius: 0.25rem;
+    background: var(--paper); color: var(--ink);
   }
-  #modal-body {
-    padding: 10px;
-    overflow-y: auto;
+  .row.bot { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .row-label {
+    flex: none; font-family: var(--f-ui); letter-spacing: 0.02em;
+    font-size: var(--text-lg); line-height: 1.2; text-transform: uppercase;
   }
-  .highlighted {
-    background: #fff3cd;
-    outline: 2px solid #e0b93d;
-    padding: 4px;
-    margin: -4px -4px 10px -4px;
+  .row-msg { flex: 1; text-align: right; font-size: var(--text-lg); line-height: 1.35; overflow-wrap: anywhere; }
+  .row.context { background: transparent; border: 1px solid #c8c8c8; color: var(--muted); }
+
+  .visible .src-group .row.bot { cursor: pointer; }
+  .src-group.open { border: 1px solid #c8c8c8; padding: 0 0.5rem 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .src-head { display: flex; justify-content: space-between; align-items: flex-start; margin: 0 -0.5rem; }
+  .enter {
+    font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-sm); text-transform: uppercase;
+    border: 1px solid currentColor; padding: 0.1rem 0.4rem; background: var(--paper);
   }
-  #camera-video, #photo-preview {
-    width: 100%;
-    max-width: 320px;
-    border: 1px solid #999;
-    margin-top: 10px;
+  .enter:hover { background: #ececec; }
+
+  .msg-input {
+    flex: none; height: 3rem;
+    border: none; outline: none; background: transparent;
+    font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-lg);
+    padding: 0 0.6rem;
   }
-  #photo-controls button, #voice-controls button { margin-right: 8px; }
-  .avatar-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    object-fit: cover;
-    vertical-align: middle;
-    margin-right: 4px;
+  .msg-input:disabled { color: var(--muted); }
+
+  /* visible sidebar */
+  .sidebar {
+    width: 17.5rem; flex: none;
+    background: var(--sidebar);
+    border: 2px solid #2a2a2a; border-radius: 0.5rem;
+    padding: 0.8rem 0.7rem;
+    display: flex; flex-direction: column; gap: 0.6rem;
+    color: #fff;
   }
-  .modal-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    object-fit: cover;
-    display: block;
-    margin: 0 auto 10px auto;
+  .people { display: flex; align-items: center; gap: 0.35rem; color: #6d6d6d; min-height: 1.5rem; }
+  .people button { width: 1.5rem; height: 1.5rem; display: flex; }
+  .people button.sel { color: #fff; }
+  .people svg { width: 100%; height: 100%; }
+  .people .count { margin-left: auto; font-family: var(--f-ui); font-size: var(--text-sm); color: #fff; }
+  .side-card .card { background: var(--sidebar); color: #fff; width: 100%; }
+  .slots { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.3rem; }
+  .slot {
+    position: relative;
+    clip-path: polygon(0 0, 78% 0, 100% 16%, 100% 100%, 0 100%);
+    background: #141414;
+    transition: transform 160ms ease;
   }
-  #voice-preview {
-    min-height: 1.4em;
-    font-size: 1.2rem;
-    margin-top: 10px;
+  .slot.filled { background: #3c423f; cursor: pointer; padding: 0.5rem 0.5rem 1rem; }
+  .slot.filled::after { content: ""; position: absolute; left: 0.3rem; right: 0.3rem; bottom: 0.3rem; height: 0.2rem; background: #8e8e8e; }
+  .slot.sel { transform: translateY(-0.7rem); background: #8f9c93; }
+  .slot img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0.3rem; }
+
+  /* ARCHIVE: the colour flip */
+  .archive .panel { background: #000; border-color: #5a5a5a; color: #fff; }
+  .archive .glow {
+    background:
+      radial-gradient(38% 34% at 30% 34%, rgba(70, 70, 70, 0.8), rgba(70, 70, 70, 0) 70%),
+      radial-gradient(34% 32% at 50% 28%, rgba(90, 90, 90, 0.8), rgba(90, 90, 90, 0) 70%),
+      radial-gradient(34% 34% at 70% 36%, rgba(60, 60, 60, 0.8), rgba(60, 60, 60, 0) 70%),
+      #000;
   }
+  .archive .list-frame { background: transparent; border-color: #5a5a5a; }
+  .archive .row.bot { border-color: #fff; }
+  .archive .row.context { border-color: #5a5a5a; }
+  .archive .head-card .card, .archive .src-head .card { background: #000; color: #fff; }
+  .archive .enter { background: #000; }
+  .archive .enter:hover { background: #222; }
+  .archive .src-group.open { border-color: #5a5a5a; }
+  .archive .msg-input { color: #fff; }
+  .archive .list { scrollbar-color: #5a5a5a #000; }
+  .archive .list::-webkit-scrollbar-track { background: #000; border-color: #5a5a5a; }
+
+  /* ============================================================
+     DOCK
+     ============================================================ */
+  .dock {
+    position: fixed; left: 50%; bottom: 0.6rem; transform: translateX(-50%);
+    display: flex; gap: 0.8rem; align-items: flex-end;
+  }
+  .dock button { width: 3.4rem; height: 2.8rem; display: flex; }
+  .dock svg { width: 100%; height: 100%; }
+
+  /* pixel effect on/off, bottom right */
+  .pixel-toggle {
+    position: fixed; right: 1rem; bottom: 1rem;
+    font-family: var(--f-ui); letter-spacing: 0.02em; font-size: var(--text-xs); text-transform: uppercase;
+    padding: 0.3rem 0.6rem;
+    background: var(--chrome); border: 2px solid #000; border-radius: 0.3rem;
+  }
+  .pixel-toggle:hover { background: #dddddd; }
 </style>
 </head>
 <body>
 
-<div id="name-screen">
-  <h1>Talk to the bot</h1>
-  <p>Enter a name for this conversation. It's not linked to an account, and you won't be able to return to it later.</p>
-  <input id="name-input" placeholder="Your name" maxlength="50">
-  <button id="start-btn">Start</button>
-</div>
+<canvas id="sky" class="px-img" data-px-width="1" aria-hidden="true"></canvas>
+<div id="scanlines" aria-hidden="true"></div>
 
-<div id="photo-screen" style="display:none;">
-  <h1>Add a photo</h1>
-  <p><strong>Your photo is stored privately.</strong> It will be shown to other people only when the bot uses your words in their conversation. By continuing, you agree to that.</p>
-  <div id="camera-area">
-    <video id="camera-video" autoplay playsinline style="display:none;"></video>
-    <img id="photo-preview" style="display:none;">
-    <canvas id="photo-canvas" style="display:none;"></canvas>
-  </div>
-  <p id="camera-error" style="color:#a33; display:none;"></p>
-  <div id="photo-controls">
-    <button id="enable-camera-btn">Enable camera</button>
-    <button id="take-photo-btn" style="display:none;">Take photo</button>
-    <button id="retake-photo-btn" style="display:none;">Retake</button>
-    <button id="use-photo-btn" style="display:none;">Use this photo</button>
-  </div>
-  <p>A photo is required to continue.</p>
-</div>
+<main id="desktop">
+  <section id="window" class="window w-setup">
+    <header class="titlebar px">
+      <div id="title" class="title"></div>
+      <button id="eye" class="eye" hidden aria-label="Show where the bot's words come from"></button>
+    </header>
 
-<div id="voice-screen" style="display:none;">
-  <h1>Give it your voice</h1>
-  <p>Click record and say <strong>"hello"</strong>. The page measures the pitch of your voice and then throws the recording away. Only that one number is saved. It sets the sound your messages make, here and whenever the bot uses your words in other people's conversations.</p>
-  <div id="voice-controls">
-    <button id="record-voice-btn">Record</button>
-    <button id="hear-voice-btn" style="display:none;">Hear it again</button>
-    <button id="use-voice-btn" style="display:none;">Use this voice</button>
-  </div>
-  <p id="voice-status"></p>
-  <p id="voice-preview"></p>
-  <p id="voice-error" style="color:#a33; display:none;"></p>
-  <p>A voice is required to continue.</p>
-</div>
+    <div class="window-body">
+      <!-- visible-mode sidebar -->
+      <aside id="sidebar" class="sidebar" hidden>
+        <div id="people" class="people px" data-px-extra="#6d6d6d #fff"></div>
+        <div id="side-card" class="side-card"></div>
+        <div id="slots" class="slots"></div>
+      </aside>
 
-<div id="chat-screen" style="display:none;">
-  <div id="mode-toggle-row">
-    <label>
-      <input type="checkbox" id="mode-toggle">
-      Show sources
-    </label>
-    <label>
-      <input type="checkbox" id="sound-toggle" checked>
-      Sound
-    </label>
-  </div>
-  <div id="messages"></div>
-  <div id="input-row">
-    <input id="message-input" placeholder="Type a message..." maxlength="500">
-    <button id="send-btn">Send</button>
-  </div>
-</div>
+      <div id="panel" class="panel">
+        <div class="glow px-img" data-px-levels="24" data-px-width="1"></div>
 
-<div id="modal-overlay">
-  <div id="modal-box">
-    <div id="modal-header">
-      <button id="modal-back" style="display:none;">Back</button>
-      <strong id="modal-title"></strong>
-      <button id="modal-close">Close</button>
+        <!-- ================= SETUP ================= -->
+        <div id="setup">
+          <section class="step step-welcome" data-step="welcome">
+            <h1 class="headline px">Welcome</h1>
+            <p class="lead px">Welcome to the FriendBot Setup Assistant! Based on your answers to a few brief questions, this assistant sets up your account so you can speak with your newest friendliest friend.</p>
+            <div class="actions"><button id="initiate-btn" class="btn px" data-px-extra="#ddd">Initiate</button></div>
+          </section>
+
+          <section class="step step-voice" data-step="voice" hidden>
+            <h2 class="step-title px">Say “hello”</h2>
+            <div class="device">
+              <div class="graph px">
+                <canvas id="graph"></canvas>
+                <div class="ticks">
+                  <div class="tick" style="left:4%"><span>0.0S</span></div>
+                  <div class="tick" style="left:50%"><span>1.5S</span></div>
+                  <div class="tick" style="left:96%"><span>3.0S</span></div>
+                </div>
+              </div>
+              <div class="device-foot">
+                <div class="meter" id="meter"><i></i><i></i><i></i></div>
+                <div class="pitch-read px" id="pitch-read"></div>
+                <button id="rec-btn" class="rec px" aria-label="Record"><i></i></button>
+              </div>
+            </div>
+            <p id="voice-error" class="setup-error px" hidden></p>
+            <div class="actions"><button id="voice-continue" class="btn px" data-px-extra="#ddd" hidden>Continue</button></div>
+          </section>
+
+          <section class="step step-selfie" data-step="selfie" hidden>
+            <h2 class="step-title px">Snap a selfie</h2>
+            <div class="camera-wrap px">
+              <div class="shutter-mark"></div>
+              <button id="shutter" class="shutter" aria-label="Take photo"></button>
+              <div class="camera">
+                <div class="viewfinder"></div>
+                <div class="lens-outer"><div class="lens-ring"><div class="lens" id="lens">
+                  <div class="no-photo" id="no-photo"></div>
+                  <video id="camera-video" class="px-img photo-grey" data-px-grey data-px-levels="4" data-px-width="1" autoplay playsinline muted hidden></video>
+                  <img id="photo-preview" class="px-img photo-grey" data-px-grey data-px-levels="4" data-px-width="1" alt="" hidden>
+                </div></div></div>
+              </div>
+            </div>
+            <canvas id="photo-canvas" hidden></canvas>
+            <p id="camera-error" class="setup-error px" hidden></p>
+            <div class="actions">
+              <button id="retake-btn" class="btn px" data-px-extra="#ddd" hidden>Retake</button>
+              <button id="selfie-continue" class="btn px" data-px-extra="#ddd" hidden>Continue</button>
+            </div>
+          </section>
+
+          <section class="step step-mood" data-step="mood" hidden>
+            <h2 class="step-title px">How do you feel?</h2>
+            <div id="kao-grid" class="kao-grid px" data-px-extra="#ddd #f2f2f2" role="listbox" aria-label="Pick a face"></div>
+            <div class="actions"><button id="mood-continue" class="btn px" data-px-extra="#ddd" disabled>Continue</button></div>
+          </section>
+
+          <section class="step step-name" data-step="name" hidden>
+            <input id="name-input" class="name-input px" data-px-extra="#000 #9a9a9a" placeholder="Your name" maxlength="50" autocomplete="off">
+            <div class="actions"><button id="name-continue" class="btn px" data-px-extra="#ddd" disabled>Continue</button></div>
+          </section>
+
+          <nav class="rail px" id="rail" aria-label="Setup steps">
+            <span class="r-item" data-for="voice"></span>
+            <span class="r-item" data-for="selfie"></span>
+            <span class="r-item" data-for="mood"></span>
+            <span class="r-item r-abc" data-for="name">ABC</span>
+          </nav>
+        </div>
+
+        <!-- ================= CHAT ================= -->
+        <div id="chat" hidden>
+          <div id="chat-empty" class="chat-empty">
+            <h1 class="headline px">What’s on your mind?</h1>
+            <input id="start-input" class="start-input px" data-px-extra="#9a9a9a" placeholder="Start the conversation" maxlength="500" autocomplete="off">
+          </div>
+          <div id="chat-main" class="chat-main" hidden>
+            <div class="chat-head">
+              <div id="face-left" class="portrait left"></div>
+              <div id="head-card" class="head-card"></div>
+              <div id="face-right" class="portrait right"></div>
+            </div>
+            <div class="list-frame">
+              <div id="list-own" class="list"></div>
+              <div id="list-archive" class="list" hidden></div>
+            </div>
+            <input id="message-input" class="msg-input px" data-px-extra="#9a9a9a" maxlength="500" autocomplete="off" aria-label="Message">
+          </div>
+        </div>
+
+        <!-- status terminal -->
+        <div id="status" class="status px" hidden>
+          <div class="face" id="status-face"></div>
+          <div id="term" class="term"></div>
+          <div class="progress"><i id="progress"></i></div>
+          <button id="retry-btn" class="btn px" data-px-extra="#ddd" hidden>Try again</button>
+        </div>
+      </div>
     </div>
-    <img id="modal-avatar" class="modal-avatar" style="display:none;">
-    <div id="modal-body"></div>
-  </div>
-</div>
+  </section>
+</main>
+
+<nav id="dock" class="dock" aria-label="Dock"></nav>
+<button id="pixel-toggle" class="pixel-toggle" hidden></button>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="pixel-filter.js"></script>
 <script>
   const SUPABASE_URL = 'https://armgdhkneqakvawzeulk.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_PDqfiP52V0a6DrBKBcGL-A_RKVgaN6M';
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // ---------- Voice settings (safe to tweak) ----------
-  const DEFAULT_VOICE_PITCH = 200; // Hz. The bot in simple mode, seed users, and the fallback.
+  const DEFAULT_VOICE_PITCH = 200; // Hz. The bot in obscured mode, seed users, and the fallback.
   const VOICE_PITCH_MULTIPLIER = 1; // Raise (e.g. 1.5) for a squeakier, more cartoonish sound.
-  const RECORD_SECONDS = 2.5;
+  const RECORD_SECONDS = 3;
+  let soundOn = true;
 
-  let conversationId = null;
-  let myVoicePitch = null;
+  // Pixel look on/off: the button bottom right (hidden in Safari, where it is always off).
+  // The choice is remembered in this browser; ?nopixel in the URL also turns it off.
+  const pixelToggle = document.getElementById('pixel-toggle');
+  function setPixel(on) {
+    PixelFilter.setEnabled(on);
+    pixelToggle.textContent = 'Pixel: ' + (on ? 'on' : 'off');
+    pixelToggle.setAttribute('aria-pressed', String(on));
+    try { localStorage.setItem('friendbot-pixel', on ? 'on' : 'off'); } catch (e) {}
+  }
+  if (PixelFilter.supported) {
+    let saved = null;
+    try { saved = localStorage.getItem('friendbot-pixel'); } catch (e) {}
+    pixelToggle.hidden = false;
+    setPixel(saved !== 'off' && !new URLSearchParams(location.search).has('nopixel'));
+    pixelToggle.addEventListener('click', () => setPixel(!PixelFilter.settings.on));
+  }
 
-  const nameScreen = document.getElementById('name-screen');
-  const photoScreen = document.getElementById('photo-screen');
-  const voiceScreen = document.getElementById('voice-screen');
-  const chatScreen = document.getElementById('chat-screen');
-  const nameInput = document.getElementById('name-input');
-  const startBtn = document.getElementById('start-btn');
-  const cameraVideo = document.getElementById('camera-video');
-  const photoPreview = document.getElementById('photo-preview');
-  const photoCanvas = document.getElementById('photo-canvas');
-  const cameraError = document.getElementById('camera-error');
-  const enableCameraBtn = document.getElementById('enable-camera-btn');
-  const takePhotoBtn = document.getElementById('take-photo-btn');
-  const retakePhotoBtn = document.getElementById('retake-photo-btn');
-  const usePhotoBtn = document.getElementById('use-photo-btn');
-  const recordVoiceBtn = document.getElementById('record-voice-btn');
-  const hearVoiceBtn = document.getElementById('hear-voice-btn');
-  const useVoiceBtn = document.getElementById('use-voice-btn');
-  const voiceStatus = document.getElementById('voice-status');
-  const voicePreview = document.getElementById('voice-preview');
-  const voiceError = document.getElementById('voice-error');
+  const $ = id => document.getElementById(id);
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
 
-  let pendingName = null;
-  let cameraStream = null;
-  let capturedBlob = null;
-  const messagesEl = document.getElementById('messages');
-  const messageInput = document.getElementById('message-input');
-  const sendBtn = document.getElementById('send-btn');
-  const modalOverlay = document.getElementById('modal-overlay');
-  const modalTitle = document.getElementById('modal-title');
-  const modalBody = document.getElementById('modal-body');
-  const modalClose = document.getElementById('modal-close');
-  const modalBack = document.getElementById('modal-back');
-  const modalAvatar = document.getElementById('modal-avatar');
-  const modeToggle = document.getElementById('mode-toggle');
-  const soundToggle = document.getElementById('sound-toggle');
+  // ============================================================
+  // ICONS (inline SVG, drawn in currentColor)
+  // ============================================================
+  const ICON = {
+    mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="13" rx="4"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>',
+    camera: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4" fill="#fff"/><circle cx="12" cy="13" r="2.4"/><circle cx="18.5" cy="9.5" r="1" fill="#fff"/></svg>',
+    person: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="5"/><path d="M2 23c0-6 4.5-9 10-9s10 3 10 9z"/></svg>',
+    clock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6.5"/><path d="M8 4v4.3l2.6 1.6"/></svg>',
+    bubble: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 2.5h13v8.5H6.5l-3.5 3v-3H1.5z"/></svg>',
+    eyeClosed: '<svg viewBox="0 0 36 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 7c4 7 9 10 15 10s11-3 15-10"/><path d="M9 14l-3 4M15 16.5l-1 4.5M21 16.5l1 4.5M27 14l3 4"/></svg>',
+    eyeOpen: '<svg viewBox="0 0 36 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M2 12c4-6.5 9.5-10 16-10s12 3.5 16 10c-4 6.5-9.5 10-16 10S6 18.5 2 12z"/><circle cx="18" cy="12" r="5.5" fill="currentColor"/></svg>',
+    monitor: '<svg viewBox="0 0 48 40" fill="none"><rect x="2" y="2" width="44" height="28" rx="2" fill="#e6e6e6" stroke="#555" stroke-width="1.5"/><circle cx="20" cy="12" r="1.3" fill="#333"/><circle cx="28" cy="12" r="1.3" fill="#333"/><path d="M19 19v2h10v-2" stroke="#333" stroke-width="1.3"/><path d="M12 34h24M14 37h20" stroke="#555" stroke-width="1.5"/></svg>',
+    folder: '<svg viewBox="0 0 48 40" fill="none"><path d="M2 8h14l3 3h27v27H2z" fill="#e6e6e6" stroke="#555" stroke-width="1.5"/><path d="M2 14h44" stroke="#555" stroke-width="1.5"/></svg>',
+    floppy: '<svg viewBox="0 0 48 40" fill="none"><path d="M6 2h30l6 6v30H6z" fill="#e6e6e6" stroke="#555" stroke-width="1.5"/><rect x="13" y="2" width="20" height="12" stroke="#555" stroke-width="1.5"/><rect x="12" y="22" width="24" height="16" stroke="#555" stroke-width="1.5"/></svg>',
+    face: '<svg viewBox="0 0 48 40" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="44" height="30" rx="2"/><circle cx="20" cy="13" r="1" fill="currentColor"/><circle cx="28" cy="13" r="1" fill="currentColor"/><path d="M19 20v2h10v-2"/><path d="M10 37h28"/></svg>'
+  };
 
-  modeToggle.addEventListener('change', () => {
-    document.body.classList.toggle('show-sources', modeToggle.checked);
-  });
+  // ============================================================
+  // DESKTOP: sky wallpaper (drawn, so the page needs no image file)
+  // ============================================================
+  function drawSky() {
+    const c = $('sky');
+    const w = Math.max(1, Math.round(innerWidth)), h = Math.max(1, Math.round(innerHeight));
+    c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#2a52cf'); g.addColorStop(0.55, '#4f7fdc'); g.addColorStop(1, '#a9c3ea');
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
 
-  modalClose.addEventListener('click', () => { modalOverlay.style.display = 'none'; });
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) modalOverlay.style.display = 'none';
-  });
+    // fractal value noise -> soft clouds, denser towards the bottom
+    const S = 4, gw = Math.ceil(w / S), gh = Math.ceil(h / S);
+    const rand = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+    const lat = n => { const a = new Float32Array((n + 2) * (n + 2)); for (let i = 0; i < a.length; i++) a[i] = rand(); return a; };
+    const octaves = [6, 12, 24, 48].map(n => ({ n, a: lat(n) }));
+    const noise = (u, v, o) => {
+      const n = o.n, X = u * n, Y = v * n, i = Math.floor(X), j = Math.floor(Y), fx = X - i, fy = Y - j;
+      const at = (p, q) => o.a[(q % (n + 2)) * (n + 2) + (p % (n + 2))];
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const top = at(i, j) * (1 - sx) + at(i + 1, j) * sx, bot = at(i, j + 1) * (1 - sx) + at(i + 1, j + 1) * sx;
+      return top * (1 - sy) + bot * sy;
+    };
+    const img = x.getImageData(0, 0, w, h), d = img.data;
+    for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+      const u = gx / gw, v = gy / gh;
+      let f = 0, amp = 0.5;
+      for (const o of octaves) { f += noise(u * 1.6, v, o) * amp; amp *= 0.5; }
+      const cover = f + (v - 0.55) * 0.55 - 0.42;
+      const a = Math.max(0, Math.min(1, cover * 3.2)) * 0.85;
+      if (a <= 0) continue;
+      for (let yy = 0; yy < S; yy++) for (let xx = 0; xx < S; xx++) {
+        const px = gx * S + xx, py = gy * S + yy;
+        if (px >= w || py >= h) continue;
+        const k = (py * w + px) * 4;
+        d[k] += (244 - d[k]) * a; d[k + 1] += (247 - d[k + 1]) * a; d[k + 2] += (252 - d[k + 2]) * a;
+      }
+    }
+    x.putImageData(img, 0, 0);
+  }
+  drawSky();
+  let skyTimer = null;
+  addEventListener('resize', () => { clearTimeout(skyTimer); skyTimer = setTimeout(drawSky, 250); });
 
-  startBtn.addEventListener('click', goToPhotoStep);
-  nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') goToPhotoStep(); });
-  sendBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+  // ============================================================
+  // STATE
+  // ============================================================
+  const state = {
+    conversationId: null,
+    name: '',
+    mood: null,
+    voicePitch: null,
+    photoBlob: null,
+    photoUrl: null,     // in-memory URL of your own photo
+    startedAt: null,
+    number: null,       // conversation number (#), fetched after setup
+    rows: [],           // your chat: { sender, text, at, source?, lab }
+    mode: 'obscured',   // 'obscured' | 'visible'
+    path: [],           // archive levels: [{ convId, name, highlightId }]
+    selected: null      // conversation id of the selected contributor
+  };
 
-  enableCameraBtn.addEventListener('click', enableCamera);
-  takePhotoBtn.addEventListener('click', takePhoto);
-  retakePhotoBtn.addEventListener('click', retakePhoto);
-  usePhotoBtn.addEventListener('click', goToVoiceStep);
+  const win = $('window');
 
-  recordVoiceBtn.addEventListener('click', recordVoice);
-  hearVoiceBtn.addEventListener('click', playVoicePreview);
-  useVoiceBtn.addEventListener('click', finishSetup);
-
-  function goToPhotoStep() {
-    const name = nameInput.value.trim();
-    if (!name) return;
-    getAudioCtx(); // unlock audio while we have a click
-    pendingName = name;
-    nameScreen.style.display = 'none';
-    photoScreen.style.display = 'block';
+  function setTitle(parts) {
+    const t = $('title');
+    t.replaceChildren();
+    parts.forEach((p, i) => {
+      if (i > 1) t.appendChild(el('span', '', '>'));
+      if (p.onClick) {
+        const b = el('button', '', p.text);
+        b.addEventListener('click', p.onClick);
+        t.appendChild(b);
+      } else t.appendChild(el('span', '', p.text));
+    });
   }
 
   // ============================================================
-  // PHOTO
+  // FORMATTING + USER CARD
   // ============================================================
+  function fmtDuration(ms) {
+    const min = Math.floor(Math.max(0, ms || 0) / 60000);
+    if (min < 1) return '<1 MIN';
+    if (min < 60) return min + ' MIN';
+    return Math.floor(min / 60) + ' HR ' + (min % 60) + ' MIN';
+  }
+  function fmtStarted(date) {
+    const d = new Date(date);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ' + d.getFullYear();
+  }
 
-  async function enableCamera() {
-    cameraError.style.display = 'none';
-    try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      cameraVideo.srcObject = cameraStream;
-      cameraVideo.style.display = 'block';
-      enableCameraBtn.style.display = 'none';
-      takePhotoBtn.style.display = 'inline-block';
-    } catch (err) {
-      console.error(err);
-      cameraError.textContent = "Could not access the camera. A photo is required to continue. Check your browser's camera permission and try again.";
-      cameraError.style.display = 'block';
+  // info: { number, name, mood, startedAt, lastAt, count }
+  function cardEl(info, { showNumber = true } = {}) {
+    const card = el('div', 'card px');
+    const top = el('div', 'card-row');
+    if (showNumber && info.number != null) top.appendChild(el('span', 'c-num', '#' + info.number));
+    top.appendChild(el('span', 'c-name', info.name || ''));
+    if (info.mood) top.appendChild(el('span', 'c-mood', info.mood));
+    const dur = el('span', 'c-dur'); dur.innerHTML = ICON.clock;
+    dur.append(fmtDuration(info.startedAt ? (info.lastAt || info.startedAt) - info.startedAt : 0));
+    const cnt = el('span', 'c-count'); cnt.innerHTML = ICON.bubble; cnt.append(String(info.count ?? 0));
+    top.append(dur, cnt);
+    const bottom = el('div', 'card-row', info.startedAt ? fmtStarted(info.startedAt) : '');
+    card.append(top, bottom);
+    return card;
+  }
+
+  function ownCardInfo() {
+    const last = state.rows.length ? state.rows[state.rows.length - 1].at : state.startedAt;
+    return { number: state.number, name: state.name, mood: state.mood, startedAt: state.startedAt, lastAt: last, count: state.rows.length };
+  }
+
+  // Cards for other conversations (cached per conversation).
+  const cardCache = new Map();
+  function getCard(convId, fallback) {
+    if (!cardCache.has(convId)) {
+      const p = supabaseClient.rpc('get_conversation_card', { target_conversation_id: convId }).then(({ data, error }) => {
+        if (error || !data || !data.length) {
+          if (error) console.error(error);
+          cardCache.delete(convId);
+          return null;
+        }
+        const r = data[0];
+        return {
+          number: r.number, name: r.display_name, mood: r.mood,
+          startedAt: new Date(r.started_at), lastAt: new Date(r.last_message_at || r.started_at),
+          count: r.message_count, photoPath: r.photo_path, voicePitch: r.voice_pitch, isSeed: r.is_seed
+        };
+      });
+      cardCache.set(convId, p);
+    }
+    return cardCache.get(convId).then(info => info || fallback || null);
+  }
+
+  // The line just before a reused message, in its own conversation.
+  const contextCache = new Map();
+  function getContext(messageId) {
+    if (!contextCache.has(messageId)) {
+      contextCache.set(messageId, supabaseClient.rpc('get_message_context', { target_message_id: messageId }).then(({ data, error }) => {
+        if (error) { console.error(error); contextCache.delete(messageId); return null; }
+        return data && data[0] ? data[0] : null;
+      }));
+    }
+    return contextCache.get(messageId);
+  }
+
+  // ============================================================
+  // PHOTOS (private bucket): downloaded once, kept in memory for this tab only.
+  // ============================================================
+  const photoCache = new Map();
+  function getPhotoUrl(path) {
+    if (!path) return Promise.resolve(null);
+    if (!photoCache.has(path)) {
+      const p = supabaseClient.storage.from('conversation-photos').download(path).then(({ data, error }) => {
+        if (error || !data) { console.error(error); photoCache.delete(path); return null; }
+        return URL.createObjectURL(data);
+      });
+      photoCache.set(path, p);
+    }
+    return photoCache.get(path);
+  }
+  function portraitImg(url) {
+    const img = el('img', 'px-img photo-grey');
+    img.dataset.pxGrey = ''; img.dataset.pxLevels = '4'; img.dataset.pxWidth = '1';
+    img.alt = ''; img.src = url;
+    return img;
+  }
+
+  // ============================================================
+  // SETUP FLOW: welcome -> voice -> selfie -> mood -> name -> status
+  // ============================================================
+  const railIcons = { voice: ICON.mic, selfie: ICON.camera, mood: ICON.person };
+  document.querySelectorAll('#rail .r-item').forEach(r => { if (railIcons[r.dataset.for]) r.innerHTML = railIcons[r.dataset.for]; });
+
+  function showStep(name) {
+    document.querySelectorAll('.step').forEach(s => { s.hidden = s.dataset.step !== name; });
+    $('rail').hidden = name === 'welcome';
+    document.querySelectorAll('#rail .r-item').forEach(r => r.classList.toggle('active', r.dataset.for === name));
+    if (name === 'voice') requestAnimationFrame(() => drawGraph([], [], 0));
+    if (name === 'selfie') startCamera();
+    if (name === 'name') setTimeout(() => $('name-input').focus(), 50);
+  }
+  setTitle([{ text: 'FRIEND.BEGIN' }]);
+  showStep('welcome');
+
+  $('initiate-btn').addEventListener('click', () => { getAudioCtx(); showStep('voice'); });
+
+  // ---------- voice ----------
+  const graph = $('graph');
+  let recording = false;
+
+  function sizeGraph() {
+    const r = graph.getBoundingClientRect();
+    graph.width = Math.max(1, Math.round(r.width * devicePixelRatio));
+    graph.height = Math.max(1, Math.round(r.height * devicePixelRatio));
+  }
+
+  // pitch (Hz) -> height in the graph (log scale, 70-500 Hz)
+  const pitchY = (hz, h) => h * (0.85 - 0.7 * (Math.log(hz / 70) / Math.log(500 / 70)));
+
+  function drawGraph(wave, segments, progress) {
+    sizeGraph();
+    const c = graph.getContext('2d'), w = graph.width, h = graph.height, k = devicePixelRatio;
+    const x0 = w * 0.04, x1 = w * 0.96, xp = x0 + (x1 - x0) * progress;
+    c.clearRect(0, 0, w, h);
+    c.strokeStyle = '#000'; c.fillStyle = '#000';
+    c.lineWidth = 1 * k;
+    c.beginPath(); c.moveTo(x0, h * 0.13); c.lineTo(x0, h); c.moveTo(x1, h * 0.13); c.lineTo(x1, h);
+    c.moveTo(x0, h * 0.5); c.lineTo(x1, h * 0.5); c.stroke();
+    // waveform
+    if (wave.length > 1) {
+      c.lineWidth = 1.2 * k; c.beginPath();
+      wave.forEach((v, i) => {
+        const x = x0 + (x1 - x0) * (i / (RECORD_SECONDS * 60));
+        const y = h * 0.5 - v * h * 0.42;
+        i ? c.lineTo(x, y) : c.moveTo(x, y);
+      });
+      c.stroke();
+    }
+    // detected pitch, one thick bar per half second
+    segments.forEach(s => {
+      if (!s.hz) return;
+      const xa = x0 + (x1 - x0) * (s.t0 / RECORD_SECONDS), xb = x0 + (x1 - x0) * (s.t1 / RECORD_SECONDS);
+      c.fillRect(xa, pitchY(s.hz, h) - 3 * k, xb - xa, 6 * k);
+    });
+    // playhead
+    if (progress > 0) {
+      c.lineWidth = 1 * k;
+      c.beginPath(); c.moveTo(xp, h * 0.1); c.lineTo(xp, h); c.stroke();
+      c.beginPath(); c.moveTo(xp - 6 * k, h * 0.06); c.lineTo(xp + 6 * k, h * 0.06); c.lineTo(xp, h * 0.06 + 7 * k); c.fill();
     }
   }
-
-  function takePhoto() {
-    const w = cameraVideo.videoWidth;
-    const h = cameraVideo.videoHeight;
-    photoCanvas.width = w;
-    photoCanvas.height = h;
-    photoCanvas.getContext('2d').drawImage(cameraVideo, 0, 0, w, h);
-
-    photoCanvas.toBlob(blob => {
-      capturedBlob = blob;
-      photoPreview.src = URL.createObjectURL(blob);
-      photoPreview.style.display = 'block';
-      cameraVideo.style.display = 'none';
-      takePhotoBtn.style.display = 'none';
-      retakePhotoBtn.style.display = 'inline-block';
-      usePhotoBtn.style.display = 'inline-block';
-    }, 'image/jpeg', 0.9);
-  }
-
-  function retakePhoto() {
-    capturedBlob = null;
-    photoPreview.style.display = 'none';
-    cameraVideo.style.display = 'block';
-    retakePhotoBtn.style.display = 'none';
-    usePhotoBtn.style.display = 'none';
-    takePhotoBtn.style.display = 'inline-block';
-  }
-
-  function stopCamera() {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(t => t.stop());
-      cameraStream = null;
-    }
-  }
-
-  function goToVoiceStep() {
-    if (!capturedBlob) return;
-    stopCamera();
-    photoScreen.style.display = 'none';
-    voiceScreen.style.display = 'block';
-  }
-
-  // ============================================================
-  // VOICE: recording and pitch detection
-  // ============================================================
 
   function showVoiceError(msg) {
-    voiceError.textContent = msg;
-    voiceError.style.display = 'block';
-    voiceStatus.textContent = '';
+    $('voice-error').textContent = msg;
+    $('voice-error').hidden = false;
   }
 
+  $('rec-btn').addEventListener('click', () => {
+    if (recording) { recording = false; return; } // stop early
+    recordVoice();
+  });
+
   async function recordVoice() {
-    voiceError.style.display = 'none';
-    getAudioCtx();
+    $('voice-error').hidden = true;
+    $('voice-continue').hidden = true;
+    $('pitch-read').textContent = '';
+    const ctx = getAudioCtx();
 
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (err) {
       console.error(err);
-      showVoiceError("Could not access the microphone. A voice is required to continue. Check your browser's microphone permission and try again.");
+      showVoiceError("Couldn't use the microphone. A voice is required to continue. Allow microphone access and try again.");
       return;
     }
 
-    recordVoiceBtn.disabled = true;
-    hearVoiceBtn.style.display = 'none';
-    useVoiceBtn.style.display = 'none';
-    voicePreview.textContent = '';
+    recording = true;
+    $('rec-btn').classList.add('recording');
+    $('rec-btn').setAttribute('aria-label', 'Stop');
 
     const chunks = [];
     const recorder = new MediaRecorder(stream);
     recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-    const stopped = new Promise(resolve => { recorder.onstop = resolve; });
+    const stopped = new Promise(r => { recorder.onstop = r; });
+
+    // live drawing
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
+    src.connect(analyser);
+    const buf = new Float32Array(analyser.fftSize);
+    const wave = [], segments = [], frames = [];
+    let smooth = 0, segStart = 0;
+    const meter = [...document.querySelectorAll('#meter i')];
+    const t0 = performance.now();
 
     recorder.start();
-    voiceStatus.textContent = 'Recording… say "hello"';
-    await new Promise(r => setTimeout(r, RECORD_SECONDS * 1000));
+    await new Promise(resolve => {
+      function frame() {
+        const t = (performance.now() - t0) / 1000;
+        analyser.getFloatTimeDomainData(buf);
+        let sum = 0; for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+        const rms = Math.sqrt(sum / buf.length);
+        smooth = smooth * 0.55 + (buf[0] * 4) * 0.45;
+        wave.push(Math.max(-1, Math.min(1, smooth)));
+        meter.forEach((m, i) => { m.classList.toggle('on', rms * 12 > i / 3); m.style.width = (40 + Math.min(60, rms * 600)) + '%'; });
+        if (rms > 0.01) { const p = framePitch(buf, 0, buf.length, ctx.sampleRate); if (p) frames.push(p); }
+        if (t - segStart >= 0.5 || t >= RECORD_SECONDS || !recording) {
+          frames.sort((a, b) => a - b);
+          segments.push({ t0: segStart, t1: Math.min(t, RECORD_SECONDS), hz: frames.length >= 2 ? frames[frames.length >> 1] : null });
+          frames.length = 0; segStart = t;
+        }
+        drawGraph(wave, segments, Math.min(1, t / RECORD_SECONDS));
+        if (t < RECORD_SECONDS && recording) requestAnimationFrame(frame); else resolve();
+      }
+      requestAnimationFrame(frame);
+    });
+    recording = false;
     recorder.stop();
     await stopped;
     stream.getTracks().forEach(t => t.stop());
-
-    voiceStatus.textContent = 'Listening…';
-    recordVoiceBtn.disabled = false;
-    recordVoiceBtn.textContent = 'Record again';
+    src.disconnect();
+    meter.forEach(m => { m.classList.remove('on'); m.style.width = ''; });
+    $('rec-btn').classList.remove('recording');
+    $('rec-btn').setAttribute('aria-label', 'Record again');
 
     let audio;
     try {
       const blob = new Blob(chunks, { type: recorder.mimeType });
-      audio = await getAudioCtx().decodeAudioData(await blob.arrayBuffer());
+      audio = await ctx.decodeAudioData(await blob.arrayBuffer());
     } catch (err) {
       console.error(err);
       showVoiceError('Something went wrong reading the recording. Please try again.');
@@ -404,32 +983,481 @@
     const result = detectPitch(audio.getChannelData(0), audio.sampleRate);
     if (!result.pitch) {
       showVoiceError({
-        quiet: "That was too quiet. Try again a little louder, or closer to the microphone.",
-        unclear: "Couldn't hear a clear voice. Try again and hold the \"hel-\" a little longer: \"hellooo\"."
+        quiet: 'That was too quiet. Try again a little louder, or closer to the microphone.',
+        unclear: "Couldn't hear a clear voice. Try again and hold the \"hel-\": \"hellooo\"."
       }[result.reason] || 'Please try again.');
       return;
     }
+    state.voicePitch = result.pitch;
+    $('pitch-read').textContent = Math.round(result.pitch) + ' HZ';
+    $('voice-continue').hidden = false;
+    sayInVoice('hello!', state.voicePitch);
+  }
+  $('voice-continue').addEventListener('click', () => showStep('selfie'));
 
-    myVoicePitch = result.pitch;
-    voiceStatus.textContent = 'Got it. Your voice is about ' + Math.round(myVoicePitch) + ' Hz.';
-    hearVoiceBtn.style.display = 'inline-block';
-    useVoiceBtn.style.display = 'inline-block';
-    playVoicePreview();
+  // ---------- selfie ----------
+  let cameraStream = null;
+  async function startCamera() {
+    if (cameraStream || state.photoBlob) return;
+    $('camera-error').hidden = true;
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      $('camera-video').srcObject = cameraStream;
+      $('camera-video').hidden = false;
+      $('no-photo').hidden = true;
+    } catch (err) {
+      console.error(err);
+      $('camera-error').textContent = "Couldn't use the camera. A photo is required to continue. Allow camera access, then click the shutter to try again.";
+      $('camera-error').hidden = false;
+    }
+  }
+  function stopCamera() {
+    if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  }
+  $('shutter').addEventListener('click', () => {
+    const v = $('camera-video');
+    if (!cameraStream || !v.videoWidth) { startCamera(); return; }
+    // square crop from the centre
+    const s = Math.min(v.videoWidth, v.videoHeight);
+    const c = $('photo-canvas'); c.width = s; c.height = s;
+    c.getContext('2d').drawImage(v, (v.videoWidth - s) / 2, (v.videoHeight - s) / 2, s, s, 0, 0, s, s);
+    c.toBlob(blob => {
+      state.photoBlob = blob;
+      if (state.photoUrl) URL.revokeObjectURL(state.photoUrl);
+      state.photoUrl = URL.createObjectURL(blob);
+      $('photo-preview').src = state.photoUrl;
+      $('photo-preview').hidden = false;
+      v.hidden = true;
+      stopCamera();
+      $('retake-btn').hidden = false;
+      $('selfie-continue').hidden = false;
+    }, 'image/jpeg', 0.9);
+  });
+  $('retake-btn').addEventListener('click', () => {
+    state.photoBlob = null;
+    $('photo-preview').hidden = true;
+    $('retake-btn').hidden = true;
+    $('selfie-continue').hidden = true;
+    startCamera();
+  });
+  $('selfie-continue').addEventListener('click', () => { stopCamera(); showStep('mood'); });
+
+  // ---------- mood ----------
+  const KAOMOJI = [
+    '(*^_^*)', '(＾_＾)', '(＾◇＾)', '(＾▽＾)', '。゜(ノД`)゜。', 'ψ(｀∇´)ψ',
+    '(＾Ｏ＾)', '(⌒▽⌒)', '(￣▽￣)', '(*^○^*)', 'ε=┌(;￣◇￣)┘', '(˘ᴗ˘)',
+    '(o^^o)', '(^ω^)', '(＾ω＾)', '(＾ｖ＾)', '(^O^)', '(=^x^=)',
+    'o(^_-)O', '(*^o^*)', '(^-^)/', '(^o^)/', '(^O^)/', '*\\(^o^)/*',
+    '(゜Д゜)', '(≧▽≦)', '^_^', '^ ^', '(^ー゜)', '(-_-)',
+    '(^_-)', '(＾-^)ノ', '(´▽`)', '(^^)', '(^ ^)', '(^_^)',
+    '(^-^)', 'p(^_^)q', '^_-☆', '(^_-)-☆', '☆～(ゝ。∂)', '(^o^)',
+    '(^○^)', '(^。^)', '(*^^*)', '(＾＿＾)☆', '＼(^o^)／', 'o(^▽^)o',
+    '(((o(*ﾟ▽ﾟ*)o)))', 'ヾ(@⌒ー⌒@)ノ', '(^_^;)', 'V(^_^)V', '♪(＾∇＾*)', '(・_・)'
+  ];
+  const grid = $('kao-grid');
+  KAOMOJI.forEach(k => {
+    const b = el('button', 'kao', k);
+    b.setAttribute('role', 'option');
+    b.addEventListener('click', () => {
+      grid.querySelectorAll('.kao').forEach(x => x.classList.toggle('selected', x === b));
+      state.mood = k;
+      $('mood-continue').disabled = false;
+    });
+    grid.appendChild(b);
+  });
+  $('mood-continue').addEventListener('click', () => showStep('name'));
+
+  // ---------- name ----------
+  $('name-input').addEventListener('input', e => { $('name-continue').disabled = !e.target.value.trim(); });
+  $('name-input').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.value.trim()) finishSetup(); });
+  $('name-continue').addEventListener('click', finishSetup);
+
+  // ---------- status terminal + saving ----------
+  $('status-face').innerHTML = ICON.face;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  async function termType(line) {
+    const t = $('term');
+    for (const ch of line) { t.textContent += ch; await wait(14); }
+    t.textContent += '\n';
   }
 
-  function playVoicePreview() {
-    if (!myVoicePitch) return;
-    voicePreview.textContent = '';
-    typeOut(voicePreview, 'Hello! This is how you sound.', () => myVoicePitch);
+  let saving = false;
+  async function finishSetup() {
+    const name = $('name-input').value.trim();
+    if (saving || !name || !state.photoBlob || !state.voicePitch || !state.mood) return;
+    saving = true;
+    state.name = name;
+    $('name-continue').disabled = true;
+    $('status').hidden = false;
+    $('retry-btn').hidden = true;
+    $('term').textContent = '';
+    $('progress').style.width = '0%';
+
+    for (const line of ['[STATUS]', 'Voice: Success', 'Photo: Success', 'Mood: Success', 'Name: Success', 'PROFILE CREATED', '', 'Uploading to cloud...', 'Do not close window']) await termType(line);
+
+    const id = crypto.randomUUID();
+    const photoPath = id + '.jpg';
+    $('progress').style.width = '25%';
+    const { error: upErr } = await supabaseClient.storage.from('conversation-photos')
+      .upload(photoPath, state.photoBlob, { contentType: 'image/jpeg' });
+    if (upErr) return setupFailed(upErr);
+    $('progress').style.width = '60%';
+
+    const { error } = await supabaseClient.from('conversations').insert({
+      id, display_name: name, photo_path: photoPath, mood: state.mood,
+      voice_pitch: Math.round(state.voicePitch * 10) / 10
+    });
+    if (error) return setupFailed(error);
+    $('progress').style.width = '100%';
+
+    state.conversationId = id;
+    state.startedAt = new Date();
+    getCard(id).then(c => { if (c) { state.number = c.number; renderHeader(); } });
+    await wait(700);
+    enterChat();
+  }
+  function setupFailed(err) {
+    console.error(err);
+    saving = false;
+    $('term').textContent += '\nUPLOAD FAILED\n';
+    $('retry-btn').hidden = false;
+    $('name-continue').disabled = false;
+  }
+  $('retry-btn').addEventListener('click', () => { $('status').hidden = true; showStep('name'); });
+
+  // ============================================================
+  // CHAT
+  // ============================================================
+  function enterChat() {
+    $('status').hidden = true;
+    $('setup').hidden = true;
+    $('chat').hidden = false;
+    win.classList.replace('w-setup', 'w-chat');
+    $('eye').hidden = false;
+    renderChrome();
+    setTimeout(() => $('start-input').focus(), 50);
+    setInterval(() => { if (!inArchive()) renderHeader(); }, 30000); // keep the duration current
   }
 
+  const inArchive = () => state.path.length > 0;
+  const isVisible = () => state.mode === 'visible' || inArchive();
+
+  // Title, eye, dock, sidebar, header: everything that depends on mode / archive level.
+  function renderChrome() {
+    win.classList.toggle('visible', isVisible());
+    win.classList.toggle('archive', inArchive());
+    $('eye').innerHTML = isVisible() ? ICON.eyeOpen : ICON.eyeClosed;
+    $('eye').setAttribute('aria-label', isVisible() ? "Hide where the bot's words come from" : "Show where the bot's words come from");
+
+    if (inArchive()) {
+      const parts = [{ text: 'FRIEND.VISIBLE_ARCHIVE' }, { text: state.name, onClick: () => leaveArchive(0) }];
+      state.path.forEach((p, i) => parts.push({ text: p.name, onClick: i < state.path.length - 1 ? () => leaveArchive(i + 1) : null }));
+      setTitle(parts);
+    } else setTitle([{ text: state.mode === 'visible' ? 'FRIEND.VISIBLE' : 'FRIEND.START' }]);
+
+    renderDock();
+    $('sidebar').hidden = !isVisible();
+    $('list-own').hidden = inArchive();
+    $('list-archive').hidden = !inArchive();
+    $('message-input').disabled = inArchive();
+    ownRowsRelabel();
+    renderHeader();
+    renderSidebar();
+  }
+
+  $('eye').addEventListener('click', () => {
+    if (inArchive()) { state.path = []; state.mode = 'obscured'; }
+    else state.mode = state.mode === 'visible' ? 'obscured' : 'visible';
+    if (state.mode === 'visible' && state.number == null) getCard(state.conversationId).then(c => { if (c) { state.number = c.number; renderHeader(); } });
+    renderChrome();
+  });
+
+  // ---------- dock ----------
+  function renderDock() {
+    const dock = $('dock');
+    dock.replaceChildren();
+    const add = (icon, label, fn) => { const b = el('button', 'px'); b.innerHTML = ICON[icon]; b.setAttribute('aria-label', label); b.title = label; b.addEventListener('click', fn); dock.appendChild(b); };
+    if (!state.conversationId) { add('monitor', 'FriendBot', () => {}); return; }
+    if (isVisible()) add('folder', 'Open the selected archive', () => {
+      const c = currentContributors().find(c => c.convId === state.selected);
+      if (c) enterArchive(c.convId, c.name, c.messageId);
+    });
+    add('monitor', 'Back to your conversation', () => { if (inArchive()) leaveArchive(0); });
+    if (isVisible()) add('floppy', 'Save this transcript', saveTranscript);
+  }
+  renderDock();
+
+  function saveTranscript() {
+    const list = inArchive() ? $('list-archive') : $('list-own');
+    const lines = [...list.querySelectorAll('.row:not(.context)')].map(r =>
+      r.querySelector('.row-label').textContent + ': ' + r.querySelector('.row-msg').textContent);
+    const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
+    const a = el('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'friendbot-' + (inArchive() ? state.path[state.path.length - 1].name : state.name).toLowerCase() + '.txt';
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ---------- contributors (whose words the bot reused), most recent first ----------
+  let archiveContributors = [];
+  function currentContributors() {
+    if (inArchive()) return archiveContributors;
+    const seen = new Map();
+    for (let i = state.rows.length - 1; i >= 0; i--) {
+      const s = state.rows[i].source;
+      if (s && !seen.has(s.convId)) seen.set(s.convId, { convId: s.convId, name: s.name, photoPath: s.photoPath, messageId: s.messageId });
+    }
+    return [...seen.values()];
+  }
+  function selectContributor(convId) {
+    state.selected = convId;
+    renderHeader();
+    renderSidebar();
+  }
+
+  // ---------- header: bot face (left), card, your face (right) ----------
+  let headerToken = 0;
+  async function renderHeader() {
+    if (!state.conversationId) return;
+    const token = ++headerToken;
+    const contributors = currentContributors();
+    if (!contributors.some(c => c.convId === state.selected)) state.selected = contributors[0]?.convId || null;
+    const sel = contributors.find(c => c.convId === state.selected);
+
+    let card, leftUrl = null, rightUrl = null, leftBlack = false;
+    if (inArchive()) {
+      const here = state.path[state.path.length - 1];
+      const info = await getCard(here.convId, { name: here.name });
+      if (token !== headerToken) return;
+      card = cardEl(info, { showNumber: true });
+      rightUrl = info && await getPhotoUrl(info.photoPath);
+      leftUrl = sel && await getPhotoUrl(sel.photoPath);
+    } else {
+      card = cardEl(ownCardInfo(), { showNumber: state.mode === 'visible' });
+      rightUrl = state.photoUrl;
+      if (state.mode === 'obscured') leftBlack = true;
+      else leftUrl = sel && await getPhotoUrl(sel.photoPath);
+    }
+    if (token !== headerToken) return;
+    $('head-card').replaceChildren(card);
+    setPortrait($('face-left'), leftUrl, leftBlack);
+    setPortrait($('face-right'), rightUrl, false);
+  }
+  function setPortrait(box, url, black) {
+    box.classList.toggle('bot-hidden', !!black);
+    const cur = box.querySelector('img');
+    if (black || !url) { box.replaceChildren(); return; }
+    if (cur && cur.src === url) return;
+    box.replaceChildren(portraitImg(url));
+  }
+
+  // ---------- sidebar ----------
+  let sidebarToken = 0;
+  async function renderSidebar() {
+    if (!isVisible() || !state.conversationId) return;
+    const token = ++sidebarToken;
+    const contributors = currentContributors();
+    const people = $('people');
+    people.replaceChildren();
+    contributors.slice(0, 7).forEach(c => {
+      const b = el('button', c.convId === state.selected ? 'sel' : '');
+      b.innerHTML = ICON.person; b.setAttribute('aria-label', c.name); b.title = c.name;
+      b.addEventListener('click', () => selectContributor(c.convId));
+      people.appendChild(b);
+    });
+    people.appendChild(el('span', 'count', String(contributors.length)));
+
+    const slots = $('slots');
+    slots.replaceChildren();
+    for (let i = 0; i < 6; i++) {
+      const c = contributors[i];
+      const slot = el('div', 'slot');
+      if (c) {
+        slot.classList.add('filled');
+        if (c.convId === state.selected) slot.classList.add('sel');
+        slot.title = c.name;
+        slot.addEventListener('click', () => selectContributor(c.convId));
+        getPhotoUrl(c.photoPath).then(url => { if (url && token === sidebarToken) slot.appendChild(portraitImg(url)); });
+      }
+      slots.appendChild(slot);
+    }
+
+    const sel = contributors.find(c => c.convId === state.selected);
+    if (!sel) { $('side-card').replaceChildren(); return; }
+    const info = await getCard(sel.convId, { name: sel.name });
+    if (token === sidebarToken) $('side-card').replaceChildren(cardEl(info, { showNumber: true }));
+  }
+
+  // ---------- message rows ----------
+  // sender 'user' = typed by the person whose conversation this is -> data font
+  // sender 'bot'  = what the bot said to them                       -> friend font
+  function makeRow(sender, label) {
+    const row = el('div', 'row px ' + sender);
+    const lab = el('div', 'row-label px-t', label);
+    const msg = el('div', 'row-msg px-t ' + (sender === 'user' ? 'f-data' : 'f-friend'));
+    row.append(lab, msg);
+    return { row, lab, msg };
+  }
+
+  function ownLabel(sender, source) {
+    if (sender === 'user') return state.mode === 'visible' ? state.name : 'YOU';
+    return state.mode === 'visible' && source ? source.name : 'BOT';
+  }
+  function ownRowsRelabel() {
+    state.rows.forEach(r => { if (r.lab) r.lab.textContent = ownLabel(r.sender, r.source); });
+  }
+
+  // A bot row with a source opens into a source block (visible / archive only).
+  function wrapSource(rowEl, source) {
+    const group = el('div', 'src-group');
+    group.appendChild(rowEl);
+    rowEl.addEventListener('click', () => {
+      if (!isVisible()) return;
+      selectContributor(source.convId);
+      toggleSource(group, source);
+    });
+    return group;
+  }
+
+  async function toggleSource(group, source) {
+    if (group.classList.contains('open')) {
+      group.classList.remove('open');
+      group.querySelectorAll('.src-head, .row.context').forEach(n => n.remove());
+      return;
+    }
+    group.classList.add('open');
+    const head = el('div', 'src-head');
+    const cardSlot = el('div');
+    const enter = el('button', 'enter px', 'Enter archive ↗');
+    enter.addEventListener('click', e => { e.stopPropagation(); enterArchive(source.convId, source.name, source.messageId); });
+    head.append(cardSlot, enter);
+    group.prepend(head);
+
+    const [info, ctx] = await Promise.all([getCard(source.convId, { name: source.name }), getContext(source.messageId)]);
+    if (!group.classList.contains('open')) return;
+    cardSlot.replaceChildren(cardEl(info, { showNumber: true }));
+    if (ctx) {
+      // The line that prompted the reused reply. Never seen in this chat, so shown as raw data.
+      const { row, msg } = makeRow('user', ctx.sender === 'bot' ? 'BOT' : source.name);
+      row.classList.add('context');
+      msg.textContent = ctx.content;
+      head.after(row);
+    }
+  }
+
+  // ---------- sending ----------
+  const listOwn = $('list-own');
+  const scrollOwn = () => { listOwn.scrollTop = listOwn.scrollHeight; };
+
+  function appendOwnRow(sender, text, source, pitchFn) {
+    const { row, lab, msg } = makeRow(sender, ownLabel(sender, source));
+    state.rows.push({ sender, text, at: new Date(), source, lab });
+    const node = source ? wrapSource(row, source) : row;
+    enqueueSpeech(() => {
+      listOwn.appendChild(node);
+      scrollOwn();
+      renderHeader();
+      if (isVisible() && source) renderSidebar();
+      return typeOut(msg, text, pitchFn, scrollOwn);
+    });
+  }
+
+  async function sendMessage(text) {
+    text = text.trim();
+    if (!text || !state.conversationId) return;
+    getAudioCtx();
+    if (!$('chat-empty').hidden) {
+      $('chat-empty').hidden = true;
+      $('chat-main').hidden = false;
+      $('message-input').focus();
+    }
+
+    appendOwnRow('user', text, null, () => state.voicePitch);
+
+    const { error: insertErr } = await supabaseClient.from('messages').insert({ conversation_id: state.conversationId, sender: 'user', content: text });
+    if (insertErr) { console.error(insertErr); return; }
+
+    const { data, error } = await supabaseClient.rpc('find_best_response', { input_text: text, current_conversation_id: state.conversationId });
+    if (error || !data || !data.length) {
+      if (error) console.error(error);
+      appendOwnRow('bot', "Hm, I don't know what to say to that.", null, () => DEFAULT_VOICE_PITCH);
+      return;
+    }
+    const reply = data[0];
+
+    // Save the bot line BEFORE showing it: the photo policy only allows a photo
+    // once a saved bot message points at that person's words.
+    const { error: botErr } = await supabaseClient.from('messages').insert({
+      conversation_id: state.conversationId, sender: 'bot', content: reply.response_text, source_message_id: reply.response_id
+    });
+    if (botErr) console.error(botErr);
+
+    const source = {
+      convId: reply.source_conversation_id, name: reply.source_display_name, messageId: reply.response_id,
+      photoPath: reply.source_photo_path, voicePitch: reply.source_voice_pitch, mood: reply.source_mood
+    };
+    // Bot voice: one default voice in obscured mode, the source person's voice in visible mode.
+    appendOwnRow('bot', reply.response_text, source, () => (isVisible() && source.voicePitch) || DEFAULT_VOICE_PITCH);
+  }
+
+  for (const id of ['start-input', 'message-input']) {
+    $(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') { const t = e.target.value; e.target.value = ''; sendMessage(t); }
+    });
+  }
+
+  // ============================================================
+  // ARCHIVE
+  // ============================================================
+  async function enterArchive(convId, name, highlightId) {
+    state.path.push({ convId, name, highlightId });
+    await renderArchive();
+  }
+  async function leaveArchive(level) {
+    state.path = state.path.slice(0, level);
+    if (!level) { state.mode = 'visible'; renderChrome(); return; }
+    await renderArchive();
+  }
+
+  async function renderArchive() {
+    const here = state.path[state.path.length - 1];
+    const list = $('list-archive');
+    list.replaceChildren(el('div', 'row-label', 'Loading…'));
+    archiveContributors = [];
+    renderChrome();
+
+    const { data, error } = await supabaseClient.rpc('get_conversation_transcript', { target_conversation_id: here.convId });
+    if (state.path[state.path.length - 1] !== here) return;
+    if (error || !data) { console.error(error); list.replaceChildren(el('div', 'row-label', "Couldn't load this conversation.")); return; }
+
+    list.replaceChildren();
+    let highlightEl = null;
+    const seen = new Map();
+    data.forEach(r => {
+      // The perception rule: rows look the way this person saw them.
+      const source = r.source_conversation_id ? {
+        convId: r.source_conversation_id, name: r.source_display_name, messageId: r.source_message_id,
+        photoPath: r.source_photo_path, mood: r.source_mood
+      } : null;
+      const { row, msg } = makeRow(r.sender, r.sender === 'user' ? here.name : (source ? source.name : 'BOT'));
+      msg.textContent = r.content;
+      if (r.id === here.highlightId) highlightEl = row;
+      list.appendChild(source ? wrapSource(row, source) : row);
+      if (source) { seen.delete(source.convId); seen.set(source.convId, { convId: source.convId, name: source.name, photoPath: source.photoPath, messageId: source.messageId }); }
+    });
+    archiveContributors = [...seen.values()].reverse();
+    state.selected = archiveContributors[0]?.convId || null;
+    renderHeader();
+    renderSidebar();
+    if (highlightEl) highlightEl.scrollIntoView({ block: 'center' });
+  }
+
+  // ============================================================
+  // VOICE: pitch detection
+  // ============================================================
   // Finds the pitch (Hz) of the loudest part of a recording.
-  // Looks at ~300 ms around the loudest moment, measures each 40 ms slice
-  // with autocorrelation, and returns the median of the slices that had a clear pitch.
   function detectPitch(samples, sampleRate) {
     const frameLen = Math.round(0.04 * sampleRate);
     const hop = Math.round(0.01 * sampleRate);
-
     const rms = [];
     for (let s = 0; s + frameLen <= samples.length; s += hop) {
       let sum = 0;
@@ -437,40 +1465,34 @@
       rms.push(Math.sqrt(sum / frameLen));
     }
     if (!rms.length) return { reason: 'quiet' };
-
     let loudest = 0;
     for (let i = 1; i < rms.length; i++) if (rms[i] > rms[loudest]) loudest = i;
     const maxRms = rms[loudest];
     if (maxRms < 0.01) return { reason: 'quiet' };
-
     const pitches = [];
-    const from = Math.max(0, loudest - 15);
-    const to = Math.min(rms.length - 1, loudest + 15);
+    const from = Math.max(0, loudest - 15), to = Math.min(rms.length - 1, loudest + 15);
     for (let i = from; i <= to; i++) {
       if (rms[i] < 0.5 * maxRms) continue;
       const p = framePitch(samples, i * hop, frameLen, sampleRate);
       if (p) pitches.push(p);
     }
     if (pitches.length < 3) return { reason: 'unclear' };
-
     pitches.sort((a, b) => a - b);
     return { pitch: pitches[Math.floor(pitches.length / 2)] };
   }
 
-  // Pitch of one slice, or null if it isn't clearly voiced. Range: 70–500 Hz.
+  // Pitch of one slice, or null if it isn't clearly voiced. Range: 70-500 Hz.
   function framePitch(x, start, n, sampleRate) {
     const minLag = Math.floor(sampleRate / 500);
     const maxLag = Math.ceil(sampleRate / 70);
-    const w = n - maxLag; // compare equal-length windows for every lag
+    const w = n - maxLag - 1; // compare equal-length windows for every lag
     if (w <= 0) return null;
-
     const corr = new Float32Array(maxLag + 2);
     let best = -1;
     for (let lag = minLag; lag <= maxLag + 1; lag++) {
       let num = 0, e1 = 0, e2 = 0;
       for (let j = 0; j < w; j++) {
-        const a = x[start + j];
-        const b = x[start + j + lag];
+        const a = x[start + j], b = x[start + j + lag];
         num += a * b; e1 += a * a; e2 += b * b;
       }
       const r = (e1 && e2) ? num / Math.sqrt(e1 * e2) : 0;
@@ -478,8 +1500,7 @@
       if (lag <= maxLag && r > best) best = r;
     }
     if (best < 0.6) return null;
-
-    // First peak that is nearly as strong as the best one (avoids octave errors).
+    // first peak that is nearly as strong as the best one (avoids octave errors)
     for (let lag = minLag + 1; lag <= maxLag; lag++) {
       if (corr[lag] >= 0.9 * best && corr[lag] >= corr[lag - 1] && corr[lag] >= corr[lag + 1]) {
         const y0 = corr[lag - 1], y1 = corr[lag], y2 = corr[lag + 1];
@@ -493,57 +1514,30 @@
 
   // ============================================================
   // VOICE: letter sounds (Animalese-style)
-  // Each letter is a tiny syllable at the speaker's pitch: a vowel color
-  // (from how the letter's name sounds), an onset (pop, hiss, hum...), and
-  // its own pitch step, so every letter sounds a little different.
+  // Each letter is a tiny syllable at the speaker's pitch: a vowel colour
+  // (from how the letter's name sounds), an onset, and its own pitch step.
   // ============================================================
-
-  const VOWEL_FORMANTS = {
-    a: [730, 1090], e: [530, 1840], i: [270, 2290], o: [570, 840], u: [300, 870]
-  };
-
-  // v = vowel color, on = onset, st = pitch offset in semitones
+  const VOWEL_FORMANTS = { a: [730, 1090], e: [530, 1840], i: [270, 2290], o: [570, 840], u: [300, 870] };
   const LETTER_SOUNDS = {
-    a: { v: 'e', on: 'none',   st: 0 },
-    b: { v: 'i', on: 'pop',    st: 2 },
-    c: { v: 'i', on: 'hiss',   st: -1 },
-    d: { v: 'i', on: 'pop',    st: -2 },
-    e: { v: 'i', on: 'none',   st: 3 },
-    f: { v: 'e', on: 'soft',   st: -1 },
-    g: { v: 'i', on: 'sh',     st: 1 },
-    h: { v: 'e', on: 'soft',   st: 2 },
-    i: { v: 'a', on: 'none',   st: 1 },
-    j: { v: 'e', on: 'sh',     st: -2 },
-    k: { v: 'e', on: 'pop',    st: 3 },
-    l: { v: 'e', on: 'liquid', st: -1 },
-    m: { v: 'e', on: 'nasal',  st: -3 },
-    n: { v: 'e', on: 'nasal',  st: 0 },
-    o: { v: 'o', on: 'none',   st: -1 },
-    p: { v: 'i', on: 'pop',    st: 0 },
-    q: { v: 'u', on: 'pop',    st: 2 },
-    r: { v: 'a', on: 'liquid', st: -2 },
-    s: { v: 'e', on: 'hiss',   st: 1 },
-    t: { v: 'i', on: 'pop',    st: 4 },
-    u: { v: 'u', on: 'none',   st: 2 },
-    v: { v: 'i', on: 'liquid', st: -3 },
-    w: { v: 'u', on: 'liquid', st: 0 },
-    x: { v: 'e', on: 'hiss',   st: -2 },
-    y: { v: 'a', on: 'liquid', st: 3 },
-    z: { v: 'i', on: 'hiss',   st: 2 }
+    a: { v: 'e', on: 'none', st: 0 }, b: { v: 'i', on: 'pop', st: 2 }, c: { v: 'i', on: 'hiss', st: -1 },
+    d: { v: 'i', on: 'pop', st: -2 }, e: { v: 'i', on: 'none', st: 3 }, f: { v: 'e', on: 'soft', st: -1 },
+    g: { v: 'i', on: 'sh', st: 1 }, h: { v: 'e', on: 'soft', st: 2 }, i: { v: 'a', on: 'none', st: 1 },
+    j: { v: 'e', on: 'sh', st: -2 }, k: { v: 'e', on: 'pop', st: 3 }, l: { v: 'e', on: 'liquid', st: -1 },
+    m: { v: 'e', on: 'nasal', st: -3 }, n: { v: 'e', on: 'nasal', st: 0 }, o: { v: 'o', on: 'none', st: -1 },
+    p: { v: 'i', on: 'pop', st: 0 }, q: { v: 'u', on: 'pop', st: 2 }, r: { v: 'a', on: 'liquid', st: -2 },
+    s: { v: 'e', on: 'hiss', st: 1 }, t: { v: 'i', on: 'pop', st: 4 }, u: { v: 'u', on: 'none', st: 2 },
+    v: { v: 'i', on: 'liquid', st: -3 }, w: { v: 'u', on: 'liquid', st: 0 }, x: { v: 'e', on: 'hiss', st: -2 },
+    y: { v: 'a', on: 'liquid', st: 3 }, z: { v: 'i', on: 'hiss', st: 2 }
   };
-  const OTHER_SOUND = { v: 'o', on: 'pop', st: 0 }; // digits, accented letters, etc.
-
+  const OTHER_SOUND = { v: 'o', on: 'pop', st: 0 };
   const ONSETS = {
-    pop:  { type: 'bandpass', freq: 3000, q: 1, peak: 0.6,  len: 0.015, delay: 0.01 },
+    pop:  { type: 'bandpass', freq: 3000, q: 1, peak: 0.6, len: 0.015, delay: 0.01 },
     hiss: { type: 'highpass', freq: 5000, q: 0.7, peak: 0.35, len: 0.035, delay: 0.025 },
-    sh:   { type: 'bandpass', freq: 2500, q: 2, peak: 0.4,  len: 0.035, delay: 0.025 },
-    soft: { type: 'bandpass', freq: 1400, q: 1, peak: 0.25, len: 0.03,  delay: 0.02 }
+    sh:   { type: 'bandpass', freq: 2500, q: 2, peak: 0.4, len: 0.035, delay: 0.025 },
+    soft: { type: 'bandpass', freq: 1400, q: 1, peak: 0.25, len: 0.03, delay: 0.02 }
   };
 
-  let audioCtx = null;
-  let masterGain = null;
-  let noiseBuffer = null;
-
+  let audioCtx = null, masterGain = null, noiseBuffer = null;
   function getAudioCtx() {
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -553,7 +1547,6 @@
       masterGain.gain.value = 0.6;
       masterGain.connect(compressor);
       compressor.connect(audioCtx.destination);
-
       noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
       const d = noiseBuffer.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -568,392 +1561,73 @@
     const [f1, f2] = VOWEL_FORMANTS[s.v];
     const freq = basePitch * VOICE_PITCH_MULTIPLIER * Math.pow(2, (s.st + bendSemitones) / 12);
     const t = ctx.currentTime + 0.005;
-
     const onset = ONSETS[s.on];
     if (onset) {
-      const src = ctx.createBufferSource();
-      src.buffer = noiseBuffer;
-      const filt = ctx.createBiquadFilter();
-      filt.type = onset.type;
-      filt.frequency.value = onset.freq;
-      filt.Q.value = onset.q;
+      const src = ctx.createBufferSource(); src.buffer = noiseBuffer;
+      const filt = ctx.createBiquadFilter(); filt.type = onset.type; filt.frequency.value = onset.freq; filt.Q.value = onset.q;
       const g = ctx.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(onset.peak, t + 0.003);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + onset.len);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(onset.peak, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + onset.len);
       src.connect(filt); filt.connect(g); g.connect(masterGain);
-      src.start(t, Math.random() * 0.5);
-      src.stop(t + onset.len + 0.01);
+      src.start(t, Math.random() * 0.5); src.stop(t + onset.len + 0.01);
     }
-
     const vs = t + (onset ? onset.delay : 0);
     const vd = Math.max(0.03, dur * 1.1 - (vs - t));
-
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
-
-    const bp1 = ctx.createBiquadFilter();
-    bp1.type = 'bandpass'; bp1.frequency.value = f1; bp1.Q.value = 5;
-    const bp2 = ctx.createBiquadFilter();
-    bp2.type = 'bandpass'; bp2.frequency.value = f2; bp2.Q.value = 7;
-    const body = ctx.createBiquadFilter();
-    body.type = 'lowpass'; body.frequency.value = 1200;
-
+    const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = freq;
+    const bp1 = ctx.createBiquadFilter(); bp1.type = 'bandpass'; bp1.frequency.value = f1; bp1.Q.value = 5;
+    const bp2 = ctx.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = f2; bp2.Q.value = 7;
+    const body = ctx.createBiquadFilter(); body.type = 'lowpass'; body.frequency.value = 1200;
     if (s.on === 'liquid' || s.on === 'nasal') {
-      // glide into the vowel, like l/r/m/n/w
-      bp2.frequency.setValueAtTime(f2 * 0.6, vs);
-      bp2.frequency.linearRampToValueAtTime(f2, vs + 0.03);
-      if (s.on === 'nasal') {
-        bp1.frequency.setValueAtTime(250, vs);
-        bp1.frequency.linearRampToValueAtTime(f1, vs + 0.03);
-      }
+      bp2.frequency.setValueAtTime(f2 * 0.6, vs); bp2.frequency.linearRampToValueAtTime(f2, vs + 0.03);
+      if (s.on === 'nasal') { bp1.frequency.setValueAtTime(250, vs); bp1.frequency.linearRampToValueAtTime(f1, vs + 0.03); }
     }
-
     const g1 = ctx.createGain(); g1.gain.value = 2.5;
     const g2 = ctx.createGain(); g2.gain.value = 1.8;
     const gb = ctx.createGain(); gb.gain.value = 0.15;
     const env = ctx.createGain();
-    env.gain.setValueAtTime(0, vs);
-    env.gain.linearRampToValueAtTime(1, vs + 0.008);
-    env.gain.setValueAtTime(1, vs + vd * 0.55);
-    env.gain.exponentialRampToValueAtTime(0.0001, vs + vd);
-
+    env.gain.setValueAtTime(0, vs); env.gain.linearRampToValueAtTime(1, vs + 0.008);
+    env.gain.setValueAtTime(1, vs + vd * 0.55); env.gain.exponentialRampToValueAtTime(0.0001, vs + vd);
     osc.connect(bp1); bp1.connect(g1); g1.connect(env);
     osc.connect(bp2); bp2.connect(g2); g2.connect(env);
     osc.connect(body); body.connect(gb); gb.connect(env);
     env.connect(masterGain);
-
-    osc.start(vs);
-    osc.stop(vs + vd + 0.01);
+    osc.start(vs); osc.stop(vs + vd + 0.01);
     osc.onended = () => env.disconnect();
   }
 
   // Types text into an element one character at a time, playing a sound per letter.
-  // getPitch is called once at the start, so a mode switch mid-message doesn't change voices.
-  function typeOut(el, text, getPitch, onChar) {
+  function typeOut(target, text, getPitch, onChar) {
     const chars = Array.from(text);
     const isLetter = c => /[\p{L}\p{N}]/u.test(c);
     const totalLetters = chars.filter(isLetter).length;
     const endsWithQuestion = /\?\s*$/.test(text);
-    const step = Math.min(0.07, Math.max(0.035, 9 / chars.length)); // long messages talk faster
+    const step = Math.min(0.07, Math.max(0.035, 9 / chars.length));
     const pitch = getPitch() || DEFAULT_VOICE_PITCH;
-
     return new Promise(resolve => {
-      let i = 0;
-      let lettersSoFar = 0;
+      let i = 0, lettersSoFar = 0;
       function tick() {
         if (i >= chars.length) { resolve(); return; }
         const ch = chars[i++];
-        el.textContent += ch;
+        target.textContent += ch;
         let delay = step;
         if (isLetter(ch)) {
           lettersSoFar++;
           let bend = 0;
-          if (endsWithQuestion) {
-            const fromEnd = totalLetters - lettersSoFar; // rise on the last few letters
-            if (fromEnd < 4) bend = (4 - fromEnd) * 1.5;
-          }
-          if (soundToggle.checked) playLetter(ch.toLowerCase(), pitch, step, bend);
-        } else if (/[.,!?;:]/.test(ch)) {
-          delay = step * 3;
-        }
+          if (endsWithQuestion) { const fromEnd = totalLetters - lettersSoFar; if (fromEnd < 4) bend = (4 - fromEnd) * 1.5; }
+          if (soundOn) playLetter(ch.toLowerCase(), pitch, step, bend);
+        } else if (/[.,!?;:]/.test(ch)) delay = step * 3;
         if (onChar) onChar();
         setTimeout(tick, delay * 1000);
       }
       tick();
     });
   }
+  function sayInVoice(text, pitch) { return typeOut(document.createElement('span'), text, () => pitch); }
 
   // Messages speak one after another, never on top of each other.
   let speechQueue = Promise.resolve();
   function enqueueSpeech(fn) {
     speechQueue = speechQueue.then(fn).catch(err => console.error(err));
     return speechQueue;
-  }
-
-  // ============================================================
-  // SETUP
-  // ============================================================
-
-  async function finishSetup() {
-    if (!capturedBlob || !myVoicePitch) return;
-    useVoiceBtn.disabled = true;
-    recordVoiceBtn.disabled = true;
-
-    conversationId = crypto.randomUUID();
-    const photoPath = conversationId + '.jpg';
-
-    const { error: uploadErr } = await supabaseClient.storage
-      .from('conversation-photos')
-      .upload(photoPath, capturedBlob, { contentType: 'image/jpeg' });
-
-    if (uploadErr) {
-      console.error(uploadErr);
-      alert('Could not upload the photo. Please try again.');
-      conversationId = null;
-      useVoiceBtn.disabled = false;
-      recordVoiceBtn.disabled = false;
-      return;
-    }
-
-    const { error } = await supabaseClient
-      .from('conversations')
-      .insert({
-        id: conversationId,
-        display_name: pendingName,
-        photo_path: photoPath,
-        voice_pitch: Math.round(myVoicePitch * 10) / 10
-      });
-
-    if (error) {
-      console.error(error);
-      alert('Could not start the conversation. Check console for details.');
-      conversationId = null;
-      useVoiceBtn.disabled = false;
-      recordVoiceBtn.disabled = false;
-      return;
-    }
-
-    voiceScreen.style.display = 'none';
-    chatScreen.style.display = 'block';
-    messageInput.focus();
-  }
-
-  // ============================================================
-  // PHOTOS (private bucket)
-  // Each photo is downloaded once and kept in memory for this tab only.
-  // It is gone when the tab is closed or reloaded.
-  // ============================================================
-
-  const photoCache = new Map(); // photo path -> Promise of an in-memory URL
-
-  function getPhotoUrl(path) {
-    if (!path) return Promise.resolve(null);
-    if (!photoCache.has(path)) {
-      const p = supabaseClient.storage
-        .from('conversation-photos')
-        .download(path)
-        .then(({ data, error }) => {
-          if (error || !data) {
-            console.error(error);
-            photoCache.delete(path); // allow a retry later
-            return null;
-          }
-          return URL.createObjectURL(data);
-        });
-      photoCache.set(path, p);
-    }
-    return photoCache.get(path);
-  }
-
-  // ============================================================
-  // CHAT
-  // ============================================================
-
-  function isTransparentMode() {
-    return document.body.classList.contains('show-sources');
-  }
-
-  async function sendMessage() {
-    const text = messageInput.value.trim();
-    if (!text || !conversationId) return;
-    messageInput.value = '';
-    getAudioCtx();
-
-    appendMessage('You', text, { voicePitch: myVoicePitch });
-
-    const { error: insertErr } = await supabaseClient.from('messages').insert({
-      conversation_id: conversationId,
-      sender: 'user',
-      content: text
-    });
-
-    if (insertErr) {
-      console.error(insertErr);
-      return;
-    }
-
-    const { data, error } = await supabaseClient.rpc('find_best_response', {
-      input_text: text,
-      current_conversation_id: conversationId
-    });
-
-    if (error || !data || data.length === 0) {
-      if (error) console.error(error);
-      appendMessage('Bot', "Hm, I don't know what to say to that.");
-      return;
-    }
-
-    const reply = data[0];
-    const sourceLabel = formatSourceLabel(reply.is_seed, reply.source_display_name, reply.source_started_at);
-
-    // Save the bot line BEFORE showing it: the photo policy only allows a photo
-    // once a saved bot message points at that person's words.
-    const { error: botInsertErr } = await supabaseClient.from('messages').insert({
-      conversation_id: conversationId,
-      sender: 'bot',
-      content: reply.response_text,
-      source_message_id: reply.response_id
-    });
-    if (botInsertErr) console.error(botInsertErr);
-
-    appendMessage('Bot', reply.response_text, {
-      sourceLabel,
-      sourceConversationId: reply.source_conversation_id,
-      sourceDisplayName: reply.source_display_name,
-      highlightMessageId: reply.response_id,
-      sourcePhotoPath: reply.source_photo_path,
-      sourceVoicePitch: reply.source_voice_pitch
-    });
-  }
-
-  function appendMessage(who, text, opts = {}) {
-    const div = document.createElement('div');
-    div.className = 'message';
-    if (who === 'You') {
-      div.classList.add('user-line');
-    }
-
-    const whoSpan = document.createElement('span');
-    whoSpan.className = 'who';
-    whoSpan.textContent = who + ': ';
-    div.appendChild(whoSpan);
-
-    const textSpan = document.createElement('span');
-    div.appendChild(textSpan);
-
-    if (opts.sourceLabel) {
-      const sourceSpan = document.createElement('span');
-      sourceSpan.className = 'source';
-
-      if (opts.sourcePhotoPath) {
-        const thumb = document.createElement('img');
-        thumb.className = 'avatar-thumb';
-        sourceSpan.appendChild(document.createTextNode(' '));
-        sourceSpan.appendChild(thumb);
-        getPhotoUrl(opts.sourcePhotoPath).then(url => {
-          if (url) thumb.src = url; else thumb.remove();
-        });
-      }
-
-      sourceSpan.appendChild(document.createTextNode(' (source: ' + opts.sourceLabel + ')'));
-      div.appendChild(sourceSpan);
-    }
-
-    if (opts.sourceConversationId) {
-      div.classList.add('clickable');
-      div.title = 'Click to view the original conversation';
-      div.addEventListener('click', () => {
-        if (!isTransparentMode()) return;
-        openTranscript(opts.sourceConversationId, opts.sourceLabel, opts.sourceDisplayName, opts.highlightMessageId, opts.sourcePhotoPath);
-      });
-    }
-
-    // Your own lines: your voice. Bot lines: one default voice in simple mode,
-    // the source person's voice in transparent mode (seeds have none, so default).
-    const getPitch = who === 'You'
-      ? () => opts.voicePitch
-      : () => (isTransparentMode() && opts.sourceVoicePitch) || DEFAULT_VOICE_PITCH;
-
-    const scrollDown = () => { messagesEl.scrollTop = messagesEl.scrollHeight; };
-
-    enqueueSpeech(() => {
-      messagesEl.appendChild(div);
-      scrollDown();
-      return typeOut(textSpan, text, getPitch, scrollDown);
-    });
-  }
-
-  // ============================================================
-  // ARCHIVE
-  // ============================================================
-
-  let transcriptStack = [];
-  let transcriptRenderToken = 0;
-
-  function formatSourceLabel(isSeed, displayName, startedAt) {
-    if (isSeed) return 'seed';
-    const dateStr = new Date(startedAt).toLocaleDateString();
-    return displayName + ', ' + dateStr;
-  }
-
-  function openTranscript(conversationId, label, displayName, highlightId, photoPath) {
-    transcriptStack = [];
-    modalBack.style.display = 'none';
-    renderTranscript(conversationId, label, displayName, highlightId, photoPath);
-  }
-
-  modalBack.addEventListener('click', () => {
-    const prev = transcriptStack.pop();
-    if (!prev) return;
-    modalBack.style.display = transcriptStack.length ? 'inline-block' : 'none';
-    renderTranscript(prev.conversationId, prev.label, prev.displayName, prev.highlightId, prev.photoPath);
-  });
-
-  async function renderTranscript(conversationId, label, displayName, highlightId, photoPath) {
-    const token = ++transcriptRenderToken; // ignore results from a view the user already left
-    modalTitle.textContent = 'Original conversation (' + label + ')';
-    modalBody.innerHTML = 'Loading...';
-    modalOverlay.style.display = 'flex';
-
-    modalAvatar.style.display = 'none';
-    getPhotoUrl(photoPath).then(url => {
-      if (url && token === transcriptRenderToken) {
-        modalAvatar.src = url;
-        modalAvatar.style.display = 'block';
-      }
-    });
-
-    const { data, error } = await supabaseClient.rpc('get_conversation_transcript', {
-      target_conversation_id: conversationId
-    });
-    if (token !== transcriptRenderToken) return;
-
-    if (error || !data) {
-      console.error(error);
-      modalBody.textContent = 'Could not load this conversation.';
-      return;
-    }
-
-    modalBody.innerHTML = '';
-    let highlightEl = null;
-
-    data.forEach(row => {
-      const line = document.createElement('div');
-      line.className = 'message';
-      if (row.sender === 'user') {
-        line.classList.add('user-line');
-      }
-      const whoSpan = document.createElement('span');
-      whoSpan.className = 'who';
-      whoSpan.textContent = (row.sender === 'user' ? displayName : 'Bot') + ': ';
-      line.appendChild(whoSpan);
-      line.appendChild(document.createTextNode(row.content));
-
-      if (row.id === highlightId) {
-        line.classList.add('highlighted');
-        highlightEl = line;
-      }
-
-      if (row.sender === 'bot' && row.source_conversation_id) {
-        line.classList.add('clickable');
-        line.title = 'Click to view the original conversation';
-        const nestedLabel = formatSourceLabel(row.source_is_seed, row.source_display_name, row.source_started_at);
-        line.addEventListener('click', (e) => {
-          e.stopPropagation();
-          transcriptStack.push({ conversationId, label, displayName, highlightId, photoPath });
-          modalBack.style.display = 'inline-block';
-          renderTranscript(row.source_conversation_id, nestedLabel, row.source_display_name, row.source_message_id, row.source_photo_path);
-        });
-      }
-
-      modalBody.appendChild(line);
-    });
-
-    if (highlightEl) {
-      highlightEl.scrollIntoView({ block: 'center' });
-    }
   }
 </script>
 </body>
