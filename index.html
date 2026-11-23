@@ -550,6 +550,8 @@
      DOCK
      ============================================================ */
   .dock, .pixel-toggle { z-index: 100000; }
+  /* TEMPORARY (testing): skip the voice / photo steps. Same look as the pixel toggle, just above it. */
+  .pixel-toggle.skip-btn { bottom: 3.4rem; }
   .dock {
     position: fixed; left: 50%; bottom: 0.6rem; transform: translateX(-50%);
     display: flex; gap: 0.8rem; align-items: flex-end;
@@ -802,6 +804,7 @@
   <div class="mw-frame"><div id="mw-body" class="mw-body"></div><div id="mw-info" class="mw-info" hidden></div></div>
 </section>
 <button id="pixel-toggle" class="pixel-toggle" hidden></button>
+<button id="skip-btn" class="pixel-toggle skip-btn" hidden>Skip</button> <!-- TEMPORARY: testing only -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="pixel-filter.js"></script>
@@ -1055,7 +1058,35 @@
     if (name === 'voice') requestAnimationFrame(() => drawGraph([], [], 0));
     if (name === 'selfie') startCamera();
     if (name === 'name') setTimeout(() => $('name-input').focus(), 50);
+    $('skip-btn').hidden = !(name === 'voice' || name === 'selfie'); // TEMPORARY
   }
+
+  // ---------- TEMPORARY (testing): skip voice / photo with placeholders ----------
+  // Voice: the default voice. Photo: a plain drawn face. Remove this block and the
+  // #skip-btn button/CSS when testing is done.
+  function placeholderPhoto() {
+    const c = document.createElement('canvas'); c.width = c.height = 480;
+    const x = c.getContext('2d');
+    x.fillStyle = '#d8d8d8'; x.fillRect(0, 0, 480, 480);
+    x.fillStyle = '#9a9a9a'; x.beginPath(); x.ellipse(240, 470, 190, 130, 0, 0, Math.PI * 2); x.fill(); // shoulders
+    x.fillStyle = '#b5b5b5'; x.beginPath(); x.ellipse(240, 220, 105, 130, 0, 0, Math.PI * 2); x.fill(); // head
+    x.fillStyle = '#333'; [200, 280].forEach(cx => { x.beginPath(); x.arc(cx, 205, 10, 0, Math.PI * 2); x.fill(); });
+    x.strokeStyle = '#333'; x.lineWidth = 7; x.beginPath(); x.arc(240, 255, 34, 0.25, Math.PI - 0.25); x.stroke();
+    return new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
+  }
+  $('skip-btn').addEventListener('click', async () => {
+    if (!$('setup').querySelector('[data-step="voice"]').hidden) {
+      recording = false;                       // stop a recording in progress
+      state.voicePitch = DEFAULT_VOICE_PITCH;
+      showStep('selfie');
+    } else {
+      stopCamera();
+      state.photoBlob = await placeholderPhoto();
+      if (state.photoUrl) URL.revokeObjectURL(state.photoUrl);
+      state.photoUrl = URL.createObjectURL(state.photoBlob);
+      showStep('mood');
+    }
+  });
   setTitle([{ text: 'FRIEND.BEGIN' }]);
   showStep('welcome');
 
@@ -1248,7 +1279,10 @@
     if (cameraStream || state.photoBlob) return;
     $('camera-error').hidden = true;
     try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // moved on (e.g. skipped) while the camera was starting: switch it straight off
+      if (state.photoBlob || $('setup').querySelector('[data-step="selfie"]').hidden) { stream.getTracks().forEach(t => t.stop()); return; }
+      cameraStream = stream;
       const v = $('camera-video');
       v.srcObject = cameraStream;
       await v.play();
